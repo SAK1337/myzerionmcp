@@ -11,6 +11,27 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io) (MC
 - ✅ **Comprehensive Tests**: Unit and integration tests with pytest
 - 🚀 **Async HTTP**: Non-blocking API calls with httpx
 
+## Available Functions
+
+- **getChainById**: Returns a chain by its unique chain identifier.
+- **getFungibleById**: Returns a fungible asset by its unique identifier.
+- **getFungibleChart**: Returns the chart for a fungible asset for a selected period.
+- **getNFTById**: Returns a single NFT by its unique identifier.
+- **getWalletChart**: Returns a portfolio balance chart for a wallet.
+- **getWalletNftPortfolio**: Returns the NFT portfolio overview of a web3 wallet.
+- **getWalletPNL**: Returns the Profit and Loss (PnL) details of a web3 wallet.
+- **getWalletPortfolio**: Returns the portfolio overview of a web3 wallet.
+- **listChains**: Returns a list of all chains supported by Zerion.
+- **listFungibles**: Returns a paginated list of fungible assets supported by Zerion.
+- **listGasPrices**: Provides real-time information on the current gas prices across all supported blockchain networks.
+- **listNFTs**: Returns a list of NFTs by using different parameters.
+- **listWalletNFTCollections**: Returns a list of the NFT collections held by a specific wallet.
+- **listWalletNFTPositions**: Returns a list of the NFT positions held by a specific wallet.
+- **listWalletPositions**: Returns a list of wallet positions.
+- **listWalletTransactions**: Returns a list of transactions associated with the wallet.
+- **swapFungibles**: Provides a list of fungibles available for bridge exchange.
+- **swapOffers**: Provides a comprehensive overview of relevant trades and bridge exchanges.
+
 ## Requirements
 
 - Python 3.11 or higher
