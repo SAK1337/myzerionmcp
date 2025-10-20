@@ -1,0 +1,32 @@
+# Zerion MCP Server Configuration
+# Copy this file to config.yaml and customize as needed
+
+# Server name (shown in MCP protocol)
+name: "Zerion API"
+
+# Zerion API base URL
+base_url: "https://api.zerion.io"
+
+# OpenAPI specification URL
+oas_url: "https://raw.githubusercontent.com/smart-mcp-proxy/zerion-mcp-server/main/zerion_mcp_server/openapi_zerion.yaml"
+
+# API key for Zerion API
+# Use environment variable substitution: ${VARIABLE_NAME}
+# Or set directly (not recommended for production)
+api_key: "${ZERION_API_KEY}"
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARN, ERROR
+  level: "INFO"
+  
+  # Log format: text (human-readable) or json (structured)
+  format: "text"
+
+# Environment variable overrides (highest priority):
+# - ZERION_API_KEY: API key (required)
+# - ZERION_BASE_URL: Override base_url
+# - ZERION_OAS_URL: Override oas_url
+# - LOG_LEVEL: Override logging.level
+# - LOG_FORMAT: Override logging.format
+# - CONFIG_PATH: Path to this config file
