@@ -1,0 +1,2 @@
+# myzerionmcp
+MCP for Zerion
