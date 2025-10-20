@@ -5,7 +5,7 @@ import logging
 import json
 import sys
 from typing import Any, Dict
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class JSONFormatter(logging.Formatter):
@@ -23,7 +23,7 @@ class JSONFormatter(logging.Formatter):
             JSON string representation of log record.
         """
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
