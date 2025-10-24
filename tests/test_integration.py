@@ -7,6 +7,11 @@ import respx
 from unittest.mock import Mock, patch
 from zerion_mcp_server.config import ConfigManager
 from zerion_mcp_server.errors import NetworkError, APIError, ValidationError
+import asyncio
+import yaml
+import uvicorn
+from fastmcp import FastMCP, McpAsyncClient
+from fastmcp.server.openapi import RouteMap, MCPType
 
 
 @pytest.fixture
@@ -233,3 +238,62 @@ class TestErrorHandlingIntegration:
         assert error.field == "age"
         assert error.expected == "int"
         assert error.actual == "str"
+
+
+@pytest.mark.asyncio
+class TestMCPTools:
+    """Test MCP tool functionality."""
+
+    @respx.mock
+    async def test_list_chains_tool(self, monkeypatch, unused_tcp_port):
+        """Test the listChains tool via an MCP client."""
+        monkeypatch.setenv("ZERION_API_KEY", "Bearer test-key")
+        base_url = "https://api.zerion.io"
+        port = unused_tcp_port
+
+        # Mock the API response for listChains
+        mock_chains_response = {
+            "data": [
+                {
+                    "id": "ethereum",
+                    "type": "chains",
+                    "attributes": {"name": "Ethereum"}
+                }
+            ]
+        }
+        respx.get(f"{base_url}/v1/chains/").mock(return_value=httpx.Response(200, json=mock_chains_response))
+
+        # Load the real OpenAPI spec
+        with open("zerion_mcp_server/openapi_zerion.yaml", "r") as f:
+            openapi_spec = yaml.safe_load(f)
+
+        # Create a real FastMCP server
+        client = httpx.AsyncClient(base_url=base_url, headers={"Authorization": "Bearer test-key"})
+        mcp_server = FastMCP.from_openapi(
+            openapi_spec=openapi_spec,
+            client=client,
+            name="TestZerionServer",
+            route_maps=[RouteMap(mcp_type=MCPType.TOOL)]
+        )
+
+        # Run the server in the background
+        server_config = uvicorn.Config(mcp_server, host="127.0.0.1", port=port, log_level="info")
+        server = uvicorn.Server(server_config)
+        server_task = asyncio.create_task(server.serve())
+        await asyncio.sleep(1)  # Give server time to start
+
+        try:
+            # Connect with an MCP client
+            async with McpAsyncClient.create(f"ws://127.0.0.1:{port}") as mcp_client:
+                # Call the listChains tool
+                response = await mcp_client.request("listChains")
+
+                # Verify the response
+                assert response["status"] == "success"
+                assert len(response["data"]) == 1
+                assert response["data"][0]["id"] == "ethereum"
+
+        finally:
+            # Stop the server
+            server.should_exit = True
+            await server_task

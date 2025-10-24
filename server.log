@@ -1,0 +1,43 @@
+2025-10-24 15:06:34 [INFO] zerion_mcp_server: Starting Zerion MCP Server
+2025-10-24 15:06:34 [INFO] zerion_mcp_server: Configuration loaded
+2025-10-24 15:06:34 [INFO] zerion_mcp_server: Loading OpenAPI specification from zerion_mcp_server/openapi_zerion.yaml
+2025-10-24 15:06:34 [INFO] zerion_mcp_server: OpenAPI specification loaded successfully
+2025-10-24 15:06:34 [DEBUG] zerion_mcp_server: HTTP client configured
+2025-10-24 15:06:35 [INFO] zerion_mcp_server: Creating MCP server from OpenAPI spec
+[10/24/25 15:06:35] INFO     Using legacy OpenAPI parser. To use server.py:2020
+                             the new parser, set                               
+                             FASTMCP_EXPERIMENTAL_ENABLE_NEW_OPE               
+                             NAPI_PARSER=true. The new parser                  
+                             was introduced for testing in 2.11                
+                             and will become the default soon.                 
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Initializing server 'Zerion API'
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for ListToolsRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for ListResourcesRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for ListResourceTemplatesRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for PromptListRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for CallToolRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for ReadResourceRequest
+2025-10-24 15:06:35 [DEBUG] mcp.server.lowlevel.server: Registering handler for GetPromptRequest
+                    INFO     Created FastMCP OpenAPI server with openapi.py:829
+                             18 routes                                         
+2025-10-24 15:06:35 [INFO] zerion_mcp_server: MCP server created successfully
+2025-10-24 15:06:35 [INFO] zerion_mcp_server: Server started and ready to accept requests
+2025-10-24 15:06:35 [DEBUG] asyncio: Using proactor: IocpProactor
+INFO:     Started server process [11152]
+INFO:     Waiting for application startup.
+INFO:     ASGI 'lifespan' protocol appears unsupported.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\temp\myzerionmcp\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 403, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\temp\myzerionmcp\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\temp\myzerionmcp\.venv\Lib\site-packages\uvicorn\middleware\asgi2.py", line 14, in __call__
+    instance = self.app(scope)
+               ^^^^^^^^^^^^^^^
+TypeError: 'FastMCPOpenAPI' object is not callable
+INFO:     127.0.0.1:56694 - "POST /mcp/v1 HTTP/1.1" 500 Internal Server Error

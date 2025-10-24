@@ -1,0 +1,21 @@
+# Zerion MCP Server Configuration
+
+# Server name (shown in MCP protocol)
+name: "Zerion API"
+
+# Zerion API base URL
+base_url: "https://api.zerion.io"
+
+# OpenAPI specification URL
+oas_url: "zerion_mcp_server/openapi_zerion.yaml"
+
+# API key for Zerion API
+api_key: "Zerion_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARN, ERROR
+  level: "DEBUG"
+  
+  # Log format: text (human-readable) or json (structured)
+  format: "text"

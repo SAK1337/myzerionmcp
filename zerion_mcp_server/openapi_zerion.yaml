@@ -29,24 +29,9 @@ paths:
       tags:
         - wallets
       parameters:
-        - name: chart_period
-          in: path
-          required: true
-          description: Chart period
-          schema:
-            type: string
-            minLength: 3
-            maxLength: 5
-            default: day
-            enum:
-              - hour
-              - day
-              - week
-              - month
-              - year
-              - max
-        - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/WalletAddress'
+        - $ref: '#/components/parameters/ChartPeriod'
+        - $ref: '#/components/parameters/Currency'
         - name: 'filter[chain_ids]'
           in: query
           style: form
@@ -148,8 +133,8 @@ paths:
       tags:
         - wallets
       parameters:
-        - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/WalletAddress'
+        - $ref: '#/components/parameters/Currency'
         - name: 'filter[chain_ids]'
           in: query
           style: form
@@ -317,8 +302,8 @@ paths:
               - only_simple
               - only_complex
               - no_filter
-        - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/WalletAddress'
+        - $ref: '#/components/parameters/Currency'
       responses:
         '200':
           $ref: '#/components/responses/PortfolioResponse'
@@ -361,8 +346,8 @@ paths:
               - only_simple
               - only_complex
               - no_filter
-        - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/WalletAddress'
+        - $ref: '#/components/parameters/Currency'
         - name: 'filter[position_types]'
           in: query
           style: form
@@ -465,14 +450,9 @@ paths:
       tags:
         - wallets
       parameters:
+        - $ref: '#/components/parameters/WalletAddress'
         - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/Page'
-        - name: address
-          in: path
-          required: true
-          description: Address of the wallet.
-          schema:
-            type: string
         - name: 'filter[search_query]'
           in: query
           required: false
@@ -772,8 +752,8 @@ paths:
       tags:
         - wallets
       parameters:
-        - $ref: '#/components/parameters/Currency'
         - $ref: '#/components/parameters/WalletAddress'
+        - $ref: '#/components/parameters/Currency'
         - name: X-Env
           in: header
           description: Custom header that allows you to get data for testnets.
@@ -923,7 +903,7 @@ paths:
           schema:
             type: string
             maxLength: 44
-        - $ref: '#/paths/~1v1~1wallets~1%7Baddress%7D~1charts~1%7Bchart_period%7D/get/parameters/0'
+        - $ref: '#/components/parameters/ChartPeriod'
         - $ref: '#/components/parameters/Currency'
       responses:
         '200':
@@ -4193,6 +4173,23 @@ components:
           - zar
           - cny
           - chf
+    ChartPeriod:
+      name: chart_period
+      in: path
+      required: true
+      description: Chart period
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 5
+        default: day
+        enum:
+          - hour
+          - day
+          - week
+          - month
+          - year
+          - max
     Page:
       name: page
       in: query
