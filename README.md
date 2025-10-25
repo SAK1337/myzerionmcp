@@ -34,10 +34,36 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io) (MC
 
 ## Requirements
 
+### For Docker (Recommended)
+- Docker 20.10 or higher
+- Docker Compose V2
+- Zerion API key ([Get one here](https://developers.zerion.io/))
+
+### For Native Python Installation
 - Python 3.11 or higher
 - Zerion API key ([Get one here](https://developers.zerion.io/))
 
 ## Installation
+
+### Using Docker (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/SAK1337/myzerionmcp.git
+cd myzerionmcp
+
+# Create .env file with your API key
+cp .env.example .env
+# Edit .env and set ZERION_API_KEY
+
+# Start with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+See [DOCKER.md](DOCKER.md) for detailed Docker deployment guide.
 
 ### From Source
 

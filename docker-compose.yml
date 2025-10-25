@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  zerion-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zerion-mcp-server
+    environment:
+      # Required: Set your Zerion API key
+      - ZERION_API_KEY=${ZERION_API_KEY:-zk_dev_4615575f11864cd680aa614bf58544c2}
+      # Optional: Override defaults
+      - CONFIG_PATH=/app/config.yaml
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-text}
+    volumes:
+      # Mount config file (optional, uses default if not provided)
+      - ./config.yaml:/app/config.yaml:ro
+      # Mount logs directory for persistent logs
+      - ./logs:/app/logs
+    ports:
+      # Expose port 8000 if running HTTP server mode
+      - "8000:8000"
+    restart: unless-stopped
+    # Stdin/tty for MCP protocol communication
+    stdin_open: true
+    tty: true
+    # Network mode for MCP communication
+    network_mode: bridge

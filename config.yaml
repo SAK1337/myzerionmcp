@@ -10,7 +10,7 @@ base_url: "https://api.zerion.io"
 oas_url: "zerion_mcp_server/openapi_zerion.yaml"
 
 # API key for Zerion API
-api_key: "Zerion_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+api_key: "zk_dev_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 # Logging configuration
 logging:

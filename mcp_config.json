@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "zerion": {
+      "command": "c:\\temp\\myzerionmcp\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "zerion_mcp_server"
+      ],
+      "env": {
+        "ZERION_API_KEY": "zk_dev_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "CONFIG_PATH": "c:\\temp\\myzerionmcp\\config.yaml",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
