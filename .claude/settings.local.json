@@ -10,7 +10,9 @@
       "Bash(openspec archive add-webhook-support:*)",
       "Bash(pip install:*)",
       "Bash(openspec archive add-operational-enhancements:*)",
-      "Bash(openspec archive validate-feature-parity:*)"
+      "Bash(openspec archive validate-feature-parity:*)",
+      "Bash(openspec change show:*)",
+      "Bash(openspec --help:*)"
     ],
     "deny": [],
     "ask": []
