@@ -277,30 +277,30 @@ A wallet with 5,000 transactions cannot be fully retrieved if MCP tool only retu
 - ❌ **Missing:** Feature not available
 - ❓ **Unknown:** Implementation status unclear
 
-| Feature Category | Sub-Feature | Status | Priority |
-|------------------|-------------|--------|----------|
-| **Webhooks** | Create subscription | ❌ | CRITICAL |
-| **Webhooks** | List subscriptions | ❌ | CRITICAL |
-| **Webhooks** | Update/Delete subscription | ❌ | HIGH |
-| **Webhooks** | Enable/Disable subscription | ❌ | MEDIUM |
-| **Webhooks** | Webhook signature verification | ❌ | HIGH |
-| **Filtering** | DeFi positions (`only_complex`) | ❓ | HIGH |
-| **Filtering** | Chain filtering (`filter[chain_ids]`) | ❓ | HIGH |
-| **Filtering** | Transaction type filtering | ❓ | MEDIUM |
-| **Filtering** | Spam filtering (`filter[trash]`) | ❓ | MEDIUM |
-| **Filtering** | Protocol filtering | ❓ | MEDIUM |
-| **Filtering** | Position type filtering | ❓ | MEDIUM |
-| **Filtering** | Sort parameters | ❓ | LOW |
-| **Pagination** | Cursor-based pagination | ⚠️ | MEDIUM |
-| **Pagination** | Page size control | ❓ | LOW |
-| **Pagination** | Auto-pagination | ❌ | LOW |
-| **Testnet** | Testnet header support | ❌ | MEDIUM |
-| **Rate Limits** | 429 detection | ⚠️ | MEDIUM |
-| **Rate Limits** | Retry-After handling | ❓ | MEDIUM |
-| **Rate Limits** | Exponential backoff | ❌ | LOW |
-| **Async Status** | 202 Accepted handling | ❓ | MEDIUM |
-| **Currency** | Multi-currency support (usd, eth, eur, btc) | ❓ | LOW |
-| **Response** | Include relationships | ❓ | LOW |
+| Feature Category | Sub-Feature | Status | Priority | Last Validated |
+|------------------|-------------|--------|----------|----------------|
+| **Webhooks** | Create subscription | ✅ | CRITICAL | 2025-11-30 |
+| **Webhooks** | List subscriptions | ✅ | CRITICAL | 2025-11-30 |
+| **Webhooks** | Update/Delete subscription | ✅ | HIGH | 2025-11-30 |
+| **Webhooks** | Enable/Disable subscription | ⚠️ | MEDIUM | N/A (not in API) |
+| **Webhooks** | Webhook signature verification | ⚠️ | HIGH | Future enhancement |
+| **Filtering** | DeFi positions (`only_complex`) | ✅ | HIGH | 2025-11-30 |
+| **Filtering** | Chain filtering (`filter[chain_ids]`) | ✅ | HIGH | 2025-11-30 |
+| **Filtering** | Transaction type filtering | ✅ | MEDIUM | 2025-11-30 |
+| **Filtering** | Spam filtering (`filter[trash]`) | ✅ | MEDIUM | 2025-11-30 |
+| **Filtering** | Protocol filtering | ✅ | MEDIUM | 2025-11-30 |
+| **Filtering** | Position type filtering | ✅ | MEDIUM | 2025-11-30 |
+| **Filtering** | Sort parameters | ✅ | LOW | 2025-11-30 |
+| **Pagination** | Cursor-based pagination | ✅ | MEDIUM | 2025-11-30 |
+| **Pagination** | Page size control | ✅ | LOW | 2025-11-30 |
+| **Pagination** | Auto-pagination | ✅ | LOW | 2025-11-30 |
+| **Testnet** | Testnet header support (X-Env) | ✅ | MEDIUM | 2025-11-30 |
+| **Rate Limits** | 429 detection | ✅ | MEDIUM | 2025-11-30 |
+| **Rate Limits** | Retry-After handling | ✅ | MEDIUM | 2025-11-30 |
+| **Rate Limits** | Exponential backoff | ✅ | LOW | 2025-11-30 |
+| **Async Status** | 202 Accepted handling | ✅ | MEDIUM | 2025-11-30 |
+| **Currency** | Multi-currency support (usd, eth, eur, btc) | ✅ | LOW | 2025-11-30 |
+| **Response** | Include relationships | ✅ | LOW | Inherent to API |
 
 ---
 

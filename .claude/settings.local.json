@@ -9,7 +9,8 @@
       "Bash(timeout 5 python:*)",
       "Bash(openspec archive add-webhook-support:*)",
       "Bash(pip install:*)",
-      "Bash(openspec archive add-operational-enhancements:*)"
+      "Bash(openspec archive add-operational-enhancements:*)",
+      "Bash(openspec archive validate-feature-parity:*)"
     ],
     "deny": [],
     "ask": []

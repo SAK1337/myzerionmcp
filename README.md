@@ -11,6 +11,9 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io) (MC
 - 🔁 **Automatic Retry Logic**: Exponential backoff for rate limits (429) and wallet indexing (202)
 - 📄 **Pagination Support**: Manual and automatic pagination for large result sets (5000+ items)
 - 🚦 **Rate Limit Management**: Transparent retry handling with configurable backoff strategies
+- 🔍 **Advanced Filtering**: Chain filtering, DeFi positions, spam filtering, transaction types, and more
+- 🧪 **Testnet Support**: Test applications on testnets (Sepolia, Monad, etc.) via X-Env header
+- 💱 **Multi-Currency**: Portfolio values in USD, ETH, EUR, or BTC denomination
 - ✅ **Comprehensive Tests**: Unit and integration tests with pytest
 - 🚀 **Async HTTP**: Non-blocking API calls with httpx
 
@@ -1039,6 +1042,204 @@ WARNING: Wallet indexing timeout (attempts=3, total_wait=9s)
 **Cause**: Normal behavior for first request to a wallet.
 
 **Solution**: No action needed if `auto_retry: true` (default). The server will retry automatically.
+
+---
+
+## Testnet Support
+
+Certain Zerion API endpoints support testnet data through the `X-Env` header parameter. This allows developers to test applications on testnets before deploying to mainnet.
+
+### Supported Testnet Endpoints
+
+The following endpoints accept the `X-Env` header:
+
+- **`listWalletPositions`** - Get wallet positions on testnets
+- **`getWalletPortfolio`** - Get portfolio data for testnet wallets
+- **`listWalletTransactions`** - Fetch testnet transaction history
+- **`listWalletNFTPositions`** - Get NFT positions on testnets
+- **`listWalletNFTCollections`** - List NFT collections on testnets
+- **`getWalletNftPortfolio`** - Get NFT portfolio for testnets
+- **`listFungibles`** - List fungible assets on testnets
+- **`getFungibleById`** - Get specific fungible on testnets
+- **`listChains`** - List chains (including testnets)
+
+### Using Testnet Data
+
+To query testnet data, include `X-Env: testnet` when calling supported endpoints:
+
+```
+Use listWalletPositions with:
+- address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+- X-Env: "testnet"
+- currency: "usd"
+```
+
+This will return positions for the specified address on testnet chains (e.g., Ethereum Sepolia, Monad Testnet).
+
+### Testnet API Access
+
+**Important**: Testnet access may require special API credentials or specific tier access. Check your API key capabilities:
+
+- Contact api@zerion.io for testnet API access
+- Verify your tier includes testnet support
+- Some testnets may have limited data availability
+
+### Testnet Development Workflow
+
+**Recommended workflow for testnet-first development:**
+
+1. **Create Test Wallet on Testnet** (e.g., Sepolia)
+2. **Fund with Testnet Tokens** (use faucets)
+3. **Test MCP Tools** with `X-Env: testnet`
+4. **Verify Data Accuracy** on testnet
+5. **Deploy to Mainnet** after validation
+
+**Example - Testing Portfolio Fetch**:
+
+```
+# Test on Sepolia first
+Use getWalletPortfolio with:
+- address: "0x..."
+- X-Env: "testnet"
+- currency: "usd"
+
+# Then move to mainnet
+Use getWalletPortfolio with:
+- address: "0x..."
+- currency: "usd"
+```
+
+### Supported Testnet Chains
+
+Use `listChains` with `X-Env: testnet` to see all available testnet chains. Common testnets include:
+
+- **Ethereum Sepolia** (`sepolia`)
+- **Monad Testnet** (`monad-testnet`)
+- **Base Sepolia** (`base-sepolia`)
+- **Optimism Sepolia** (`optimism-sepolia`)
+- **Arbitrum Sepolia** (`arbitrum-sepolia`)
+
+**Note**: Testnet chain availability may vary. Use the `listChains` endpoint to get the current list.
+
+### Testnet Limitations
+
+- **Data Freshness**: Testnet indexing may be slower than mainnet
+- **Historical Data**: Some testnets have limited historical data
+- **Protocol Coverage**: Not all DeFi protocols deployed on testnets
+- **Price Data**: Testnet tokens typically have no market price
+
+---
+
+## Multi-Currency Support
+
+The Zerion API supports multiple currencies for price denomination. You can request portfolio values, position prices, and charts in USD, ETH, EUR, or BTC.
+
+### Supported Currencies
+
+| Currency | Code | Use Case |
+|----------|------|----------|
+| **US Dollar** | `usd` | Default, most common for general users |
+| **Ethereum** | `eth` | DeFi analytics, ETH-native communities |
+| **Euro** | `eur` | European users, EU compliance requirements |
+| **Bitcoin** | `btc` | Bitcoin-maximalist perspectives |
+
+### Currency-Compatible Endpoints
+
+The `currency` parameter is supported on these endpoints:
+
+- **`getWalletPortfolio`** - Portfolio total value in specified currency
+- **`listWalletPositions`** - Position values in specified currency
+- **`getWalletChart`** - Historical balance chart in specified currency
+- **`getWalletPNL`** - Profit/Loss calculations in specified currency
+- **`getFungibleChart`** - Asset price charts in specified currency
+
+### Using Different Currencies
+
+**USD (Default)**:
+```
+Use getWalletPortfolio with:
+- address: "0x..."
+- currency: "usd"
+```
+
+**ETH Denomination**:
+```
+Use getWalletPortfolio with:
+- address: "0x..."
+- currency: "eth"
+```
+
+This returns portfolio value in ETH. For example, if a wallet is worth $10,000 and ETH is $2,000, the value would be shown as 5 ETH.
+
+**EUR Denomination**:
+```
+Use listWalletPositions with:
+- address: "0x..."
+- currency: "eur"
+- filter[chain_ids]: "ethereum"
+```
+
+All position values will be shown in EUR instead of USD.
+
+**BTC Denomination**:
+```
+Use getWalletChart with:
+- address: "0x..."
+- currency: "btc"
+- period: "month"
+```
+
+Historical portfolio values will be shown in BTC equivalent.
+
+### Currency Parameter Behavior
+
+**Default Behavior**: If `currency` parameter is omitted, USD is used by default.
+
+**Price Fields Affected**: The currency parameter affects:
+- `attributes.value` - Total value
+- `attributes.price` - Individual asset prices
+- `attributes.changes` - Value changes over time
+- `attributes.floor_price` - NFT floor prices (where applicable)
+
+**Exchange Rates**: Zerion uses real-time exchange rates for currency conversion. Rates are updated continuously.
+
+### Multi-Currency Examples
+
+**Example 1: DeFi Portfolio in ETH**
+```
+Use listWalletPositions with:
+- address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+- filter[positions]: "only_complex"
+- currency: "eth"
+```
+
+Result: All DeFi position values shown in ETH denomination.
+
+**Example 2: European User Portfolio**
+```
+Use getWalletPortfolio with:
+- address: "0x..."
+- currency: "eur"
+```
+
+Result: Portfolio value and all asset prices in EUR.
+
+**Example 3: Historical Performance in BTC**
+```
+Use getWalletChart with:
+- address: "0x..."
+- currency: "btc"
+- period: "year"
+```
+
+Result: Year-long portfolio performance chart denominated in BTC.
+
+### Currency Best Practices
+
+1. **Use USD for General Applications** - Most users expect USD pricing
+2. **Use ETH for DeFi Dashboards** - DeFi users often think in ETH terms
+3. **Use EUR for EU Compliance** - Required for some European regulatory reporting
+4. **Use BTC for Bitcoin Communities** - Aligns with Bitcoin-centric worldview
 
 ---
 
