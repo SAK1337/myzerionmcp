@@ -12,7 +12,8 @@
       "Bash(openspec archive add-operational-enhancements:*)",
       "Bash(openspec archive validate-feature-parity:*)",
       "Bash(openspec change show:*)",
-      "Bash(openspec --help:*)"
+      "Bash(openspec --help:*)",
+      "Bash(openspec archive:*)"
     ],
     "deny": [],
     "ask": []

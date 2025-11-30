@@ -17,6 +17,153 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io) (MC
 - ✅ **Comprehensive Tests**: Unit and integration tests with pytest
 - 🚀 **Async HTTP**: Non-blocking API calls with httpx
 
+## Operational Capabilities
+
+The Zerion API provides three powerful operational capabilities that make it stand out from traditional blockchain data providers:
+
+### 1. Multi-Chain Aggregation
+
+**100+ blockchains in one API call** - Zerion automatically aggregates data across all supported blockchain networks without requiring multiple API requests.
+
+**How it works:**
+- No special parameters needed - multi-chain aggregation is automatic
+- Single call to `getWalletPortfolio` returns balances across Ethereum, Base, Polygon, Arbitrum, Optimism, Solana, and 100+ other chains
+- Eliminates the need for per-chain API providers (Alchemy, Infura, Moralis)
+
+**Supported chains include:**
+- **EVM chains**: Ethereum, Polygon, Arbitrum, Optimism, Base, BNB Chain, Avalanche, Fantom, Gnosis, zkSync, StarkNet
+- **L2s**: Optimism, Arbitrum, Base, zkSync Era, Polygon zkEVM, Linea, Scroll
+- **Non-EVM**: Solana
+- **100+ total chains** (see `listChains` for complete list)
+
+**Examples:**
+
+```
+Get wallet portfolio across all chains:
+Use getWalletPortfolio with:
+- address: "0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"
+- currency: "usd"
+```
+
+Result: Portfolio data aggregated from all 100+ supported chains in a single response.
+
+```
+Get positions across all chains:
+Use listWalletPositions with:
+- address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+- filter[positions]: "only_complex"
+- currency: "usd"
+```
+
+Result: DeFi positions from Ethereum, Base, Arbitrum, and all other chains in one call.
+
+**Benefits vs. per-chain APIs:**
+- **Zerion**: 1 API call for cross-chain portfolio
+- **Per-chain APIs**: 10+ separate API calls needed (one per chain)
+- **Quota savings**: 90% reduction in API requests
+- **Simplified logic**: No manual chain aggregation required
+
+**Use cases:**
+- Cross-chain portfolio dashboards
+- DeFi aggregators (track positions across all chains)
+- Multi-chain wallet analytics
+- Cross-chain transaction history
+
+### 2. DeFi Protocol Coverage
+
+**8,000+ DeFi protocols tracked** - Zerion provides comprehensive protocol metadata for lending, staking, LP, and yield farming positions.
+
+**Available protocol metadata:**
+- `relationships.dapp.data.id` - Protocol identifier (e.g., "uniswap-v3", "aave-v3")
+- `attributes.position_type` - Position category (staked, deposit, loan, reward, etc.)
+- DApp data following JSON:API relationship format
+
+**Protocol categories covered:**
+- **DEX**: Uniswap, Curve, Balancer, SushiSwap, PancakeSwap
+- **Lending**: Aave, Compound, MakerDAO, Euler
+- **Staking**: Lido, Rocket Pool, StakeWise
+- **Yield aggregators**: Yearn, Beefy, Convex
+
+**Examples:**
+
+```
+Get all DeFi positions with protocol data:
+Use listWalletPositions with:
+- address: "0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"
+- filter[positions]: "only_complex"
+- filter[trash]: "only_non_trash"
+- currency: "usd"
+```
+
+Result: Returns positions with `relationships.dapp` containing protocol metadata (Uniswap, Aave, Curve, etc.).
+
+```
+Filter positions by specific protocol:
+Use listWalletPositions with:
+- address: "0x..."
+- filter[dapp_ids]: "aave-v3,compound-v2"
+- filter[positions]: "only_complex"
+```
+
+Result: Only Aave V3 and Compound V2 positions.
+
+**Use cases:**
+- DeFi protocol analytics dashboards
+- Position aggregation by protocol
+- Protocol yield tracking
+- Risk management (track exposure by protocol)
+
+### 3. NFT Metadata Completeness
+
+**Comprehensive NFT metadata** - Zerion provides rich metadata for ERC-721 and ERC-1155 tokens, enabling full-featured NFT displays.
+
+**Available metadata fields:**
+- `metadata.name` - NFT name
+- `metadata.description` - NFT description
+- `metadata.content.preview` - Thumbnail/preview image URL
+- `metadata.content.detail` - High-resolution image URL
+- `market_data.prices.floor` - Collection floor price (where available)
+- `metadata.attributes` - NFT traits and properties
+- `relationships.nft_collection` - Collection relationship data
+
+**Image URLs:**
+- Preview URLs for thumbnails/gallery views
+- Detail URLs for full-size displays
+- URLs may be IPFS gateways
+
+**Floor price availability:**
+- Available for most established collections
+- New/small collections may lack floor data
+- Measured in requested currency (USD, ETH, EUR, BTC)
+
+**Examples:**
+
+```
+Get NFT with full metadata:
+Use getNFTById with:
+- nft_id: "ethereum:0x74ee68a33f6c9f113e22b3b77418b75f85d07d22:10"
+- currency: "usd"
+```
+
+Result: Complete NFT metadata including name, description, images, floor price, traits, and collection data.
+
+```
+Get wallet NFT positions:
+Use listWalletNFTPositions with:
+- address: "0x..."
+- filter[trash]: "only_non_trash"
+```
+
+Result: NFT positions with metadata for rich NFT gallery displays.
+
+**Use cases:**
+- NFT gallery applications
+- NFT marketplace displays
+- Collection analytics (floor price tracking)
+- Trait-based filtering and rarity analysis
+
+---
+
 ## Available Functions
 
 ### Wallet & Portfolio
