@@ -20,6 +20,17 @@ class ConfigManager:
         "logging": {
             "level": "INFO",
             "format": "text"
+        },
+        "retry_policy": {
+            "max_attempts": 5,
+            "base_delay": 1,
+            "max_delay": 60,
+            "exponential_base": 2
+        },
+        "wallet_indexing": {
+            "retry_delay": 3,
+            "max_retries": 3,
+            "auto_retry": True
         }
     }
     
@@ -212,7 +223,34 @@ class ConfigManager:
     def log_format(self) -> str:
         """Get logging format."""
         return self._config.get("logging", {}).get("format", "text")
-    
+
+    @property
+    def retry_config(self) -> Dict[str, Any]:
+        """Get retry policy configuration."""
+        return self._config.get("retry_policy", {
+            "max_attempts": 5,
+            "base_delay": 1,
+            "max_delay": 60,
+            "exponential_base": 2
+        })
+
+    @property
+    def indexing_config(self) -> Dict[str, Any]:
+        """Get wallet indexing configuration."""
+        return self._config.get("wallet_indexing", {
+            "retry_delay": 3,
+            "max_retries": 3,
+            "auto_retry": True
+        })
+
+    @property
+    def pagination_config(self) -> Dict[str, Any]:
+        """Get pagination configuration."""
+        return self._config.get("pagination", {
+            "default_page_size": 100,
+            "max_auto_pages": 50
+        })
+
     def to_dict(self, redact_secrets: bool = True) -> Dict[str, Any]:
         """Export configuration as dictionary.
         

@@ -191,3 +191,94 @@ class ValidationError(ZerionMCPError):
         self.field = field
         self.expected = expected
         self.actual = actual
+
+
+class RateLimitError(APIError):
+    """Raised when API rate limit is exceeded (429 Too Many Requests).
+
+    This error indicates that the API quota has been exhausted. The server
+    will automatically retry with exponential backoff if retry logic is enabled.
+
+    Examples:
+        - Developer tier: 2 RPS / ~5K daily requests exceeded
+        - Builder tier: 50 RPS exceeded
+        - Sustained high request volume
+
+    Attributes:
+        retry_after: Seconds until quota resets (from Retry-After header)
+        attempts: Number of retry attempts made
+    """
+
+    def __init__(
+        self,
+        message: str,
+        retry_after: Optional[int] = None,
+        attempts: int = 0,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        """Initialize rate limit error.
+
+        Args:
+            message: Error message.
+            retry_after: Seconds until quota resets.
+            attempts: Number of retry attempts made.
+            context: Additional context.
+        """
+        super().__init__(
+            message=message,
+            status_code=429,
+            retry_after=retry_after,
+            context=context
+        )
+        self.attempts = attempts
+
+
+class WalletIndexingError(APIError):
+    """Raised when wallet is being indexed (202 Accepted).
+
+    This error indicates that Zerion is indexing a newly created wallet.
+    The server will automatically retry after a short delay if retry logic is enabled.
+
+    Typical indexing time: 2-10 seconds
+
+    Examples:
+        - First request to new wallet address
+        - Wallet recently created on-chain
+        - Zerion hasn't indexed this address yet
+
+    Attributes:
+        retry_delay: Configured delay between retries (seconds)
+        max_retries: Maximum number of retry attempts
+        attempts: Number of retry attempts made
+    """
+
+    def __init__(
+        self,
+        message: str,
+        retry_delay: int = 3,
+        max_retries: int = 3,
+        attempts: int = 0,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        """Initialize wallet indexing error.
+
+        Args:
+            message: Error message.
+            retry_delay: Delay between retries in seconds.
+            max_retries: Maximum retry attempts.
+            attempts: Current retry attempt number.
+            context: Additional context.
+        """
+        context = context or {}
+        context["retry_delay_sec"] = retry_delay
+        context["max_retries"] = max_retries
+        context["attempts"] = attempts
+
+        super().__init__(
+            message=message,
+            status_code=202,
+            context=context
+        )
+        self.retry_delay = retry_delay
+        self.max_retries = max_retries
+        self.attempts = attempts

@@ -7,7 +7,9 @@
       "Bash(openspec diff:*)",
       "Bash(python:*)",
       "Bash(timeout 5 python:*)",
-      "Bash(openspec archive add-webhook-support:*)"
+      "Bash(openspec archive add-webhook-support:*)",
+      "Bash(pip install:*)",
+      "Bash(openspec archive add-operational-enhancements:*)"
     ],
     "deny": [],
     "ask": []

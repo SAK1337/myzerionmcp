@@ -19,9 +19,48 @@ api_key: "${ZERION_API_KEY}"
 logging:
   # Log level: DEBUG, INFO, WARN, ERROR
   level: "INFO"
-  
+
   # Log format: text (human-readable) or json (structured)
   format: "text"
+
+# Pagination configuration
+pagination:
+  # Default page size for paginated requests (max: 100)
+  default_page_size: 100
+
+  # Maximum number of pages to fetch with auto-pagination helper
+  # This prevents accidental quota exhaustion
+  # Example: 50 pages × 100 items = 5000 results (covers 99% of wallets)
+  max_auto_pages: 50
+
+# Retry policy for rate limiting (429 Too Many Requests)
+retry_policy:
+  # Maximum number of retry attempts before raising error
+  max_attempts: 5
+
+  # Base delay for exponential backoff (seconds)
+  # Actual delays: 1s, 2s, 4s, 8s, 16s (with jitter)
+  base_delay: 1
+
+  # Maximum delay between retries (seconds)
+  max_delay: 60
+
+  # Exponential backoff multiplier
+  exponential_base: 2
+
+# Wallet indexing handling (202 Accepted responses)
+wallet_indexing:
+  # Delay between retries when wallet is being indexed (seconds)
+  # Zerion typically indexes wallets in 2-10 seconds
+  retry_delay: 3
+
+  # Maximum number of retry attempts for indexing
+  # Total wait time: retry_delay × max_retries (e.g., 3s × 3 = 9s)
+  max_retries: 3
+
+  # Automatically retry 202 responses (recommended: true)
+  # If false, 202 responses will immediately raise WalletIndexingError
+  auto_retry: true
 
 # Webhook Configuration (optional)
 # Note: Webhooks require a separate HTTP receiver service.

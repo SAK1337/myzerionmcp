@@ -8,6 +8,9 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io) (MC
 - ⚙️ **Flexible Configuration**: YAML config files with environment variable overrides
 - 📝 **Structured Logging**: JSON and text formats with sensitive data redaction
 - 🛡️ **Robust Error Handling**: Custom exceptions with detailed context and troubleshooting hints
+- 🔁 **Automatic Retry Logic**: Exponential backoff for rate limits (429) and wallet indexing (202)
+- 📄 **Pagination Support**: Manual and automatic pagination for large result sets (5000+ items)
+- 🚦 **Rate Limit Management**: Transparent retry handling with configurable backoff strategies
 - ✅ **Comprehensive Tests**: Unit and integration tests with pytest
 - 🚀 **Async HTTP**: Non-blocking API calls with httpx
 
@@ -619,6 +622,423 @@ Smaller pages = faster responses, less quota per request.
 | **L2 trading analytics** | `filter[chain_ids]=base,optimism,arbitrum`, `filter[operation_types]=trade` |
 | **Staking tracker** | `filter[positions]=only_complex`, `filter[position_types]=staked,reward` |
 | **NFT portfolio (no spam)** | `filter[trash]=only_non_trash` on `listWalletNFTPositions` |
+
+---
+
+## Pagination - Fetching Large Result Sets
+
+The Zerion API uses cursor-based pagination for endpoints that return lists (transactions, positions, NFTs). The MCP server provides both manual and automatic pagination support.
+
+### Why Pagination Matters
+
+Active wallets can have **thousands of transactions**. Without pagination:
+- API quota exhausted quickly (Developer tier: ~5K requests/day)
+- Incomplete data (default page size: 100 items)
+- Slow responses (large payloads)
+
+### Manual Pagination
+
+All list endpoints support `page[size]` and `page[after]` parameters:
+
+```
+Use listWalletTransactions with:
+- address: "0x..."
+- page[size]: 100
+- filter[trash]: "only_non_trash"
+```
+
+The response includes a `links.next` URL for fetching the next page:
+
+```json
+{
+  "data": [...],
+  "links": {
+    "next": "https://api.zerion.io/v1/wallets/.../transactions?page[after]=cursor123"
+  }
+}
+```
+
+**To fetch the next page**, extract the cursor from `links.next` and use it as `page[after]`:
+
+```
+Use listWalletTransactions with:
+- address: "0x..."
+- page[size]: 100
+- page[after]: "cursor123"
+```
+
+Continue until `links.next` is absent (last page reached).
+
+### Automatic Pagination (Python SDK)
+
+For programmatic access, use the auto-pagination helper to fetch all pages automatically:
+
+```python
+from zerion_mcp_server.pagination import fetch_all_pages
+from zerion_mcp_server import RetryAsyncClient
+
+# Create client
+client = RetryAsyncClient(
+    base_url="https://api.zerion.io",
+    headers={"Authorization": "Bearer your-key"}
+)
+
+# Define your API call
+async def get_transactions(address, **kwargs):
+    response = await client.get(
+        f"/v1/wallets/{address}/transactions",
+        params=kwargs
+    )
+    return response.json()
+
+# Fetch all transactions (up to max_pages)
+all_transactions = await fetch_all_pages(
+    api_call=lambda **kw: get_transactions("0x123...", **kw),
+    max_pages=50,  # Safety limit
+    page_size=100
+)
+
+print(f"Total transactions: {len(all_transactions)}")
+```
+
+### Pagination Configuration
+
+Control pagination behavior in `config.yaml`:
+
+```yaml
+pagination:
+  # Default page size (max: 100)
+  default_page_size: 100
+
+  # Safety limit for auto-pagination
+  max_auto_pages: 50
+```
+
+**Example calculations**:
+- 50 pages × 100 items = 5,000 results (covers 99% of wallets)
+- 50 API requests consumed (watch your quota!)
+
+### Pagination Best Practices
+
+#### 1. Use Filters to Reduce Results
+
+**Bad** (fetches everything):
+```
+listWalletTransactions:
+  - address: "0x..."
+  - page[size]: 100
+```
+**Result**: 2,000 transactions (20 pages)
+
+**Good** (filter first):
+```
+listWalletTransactions:
+  - address: "0x..."
+  - filter[chain_ids]: "ethereum"
+  - filter[trash]: "only_non_trash"
+  - page[size]: 100
+```
+**Result**: 300 transactions (3 pages) - 85% quota savings!
+
+#### 2. Choose Appropriate Page Sizes
+
+- **Small pages (25-50)**: Faster individual requests, more total requests
+- **Large pages (100)**: Fewer requests, larger payloads (recommended)
+- **Default**: 100 items per page
+
+#### 3. Monitor Auto-Pagination Limits
+
+The auto-pagination helper logs warnings at key thresholds:
+
+```
+INFO: Fetched 10 pages - quota impact may be significant
+WARNING: Fetched 25 pages - high quota usage
+WARNING: Reached max page limit (50) - results may be incomplete
+```
+
+If you see "results may be incomplete", increase `max_auto_pages` or use manual pagination.
+
+### Quota Impact Example
+
+**Scenario**: Fetch all transactions for an active wallet (5,000 transactions)
+
+| Approach | Requests | Quota Impact (Developer Tier) |
+|----------|----------|-------------------------------|
+| Manual (1 page) | 1 | ~0.02% of daily quota |
+| Auto-paginate (50 pages) | 50 | ~1% of daily quota |
+| Without filters (200 pages) | 200 | ~4% of daily quota |
+
+**Takeaway**: Use filters + reasonable `max_pages` limits to avoid quota exhaustion.
+
+---
+
+## Rate Limiting - Automatic Retry with Backoff
+
+The Zerion API enforces rate limits based on your subscription tier:
+
+| Tier | Rate Limit | Daily Requests | Price |
+|------|------------|----------------|-------|
+| **Developer** (free) | 2 RPS | ~5,000/day | $0 |
+| **Builder** | 50 RPS | ~500,000/day | $149/mo |
+| **Pro** | 150 RPS | ~1.5M/day | $599/mo |
+| **Enterprise** | Custom | Custom | Contact sales |
+
+When you exceed your quota, the API returns `429 Too Many Requests` with a `Retry-After` header.
+
+### Automatic Retry Behavior
+
+The MCP server **automatically retries** rate-limited requests using exponential backoff with jitter:
+
+```
+Request → 429 (rate limit)
+ ↓ Wait 1 second
+Retry 1 → 429
+ ↓ Wait 2 seconds (exponential backoff)
+Retry 2 → 429
+ ↓ Wait 4 seconds
+Retry 3 → 200 OK (success!)
+```
+
+**You don't need to handle retries manually** - the server handles them transparently.
+
+### Retry Configuration
+
+Customize retry behavior in `config.yaml`:
+
+```yaml
+retry_policy:
+  # Maximum retry attempts before raising error
+  max_attempts: 5
+
+  # Base delay for exponential backoff (seconds)
+  base_delay: 1
+
+  # Maximum delay between retries (seconds)
+  max_delay: 60
+
+  # Exponential backoff multiplier
+  exponential_base: 2
+```
+
+**Delay sequence** (with exponential_base=2):
+- Retry 1: 1 second
+- Retry 2: 2 seconds
+- Retry 3: 4 seconds
+- Retry 4: 8 seconds
+- Retry 5: 16 seconds
+
+Total maximum wait: ~31 seconds (if all retries needed).
+
+### Rate Limit Error Messages
+
+If retries are exhausted, you'll see an actionable error:
+
+```
+RateLimitError: Rate limit exceeded after 5 retry attempts.
+Retry after 60 seconds. Consider upgrading tier or reducing
+request frequency. See: https://zerion.io/pricing
+```
+
+**Next steps**:
+1. Wait for the `retry_after` duration (from error message)
+2. Reduce request frequency in your app
+3. Upgrade to a higher tier if needed
+
+### Rate Limiting Best Practices
+
+#### 1. Use Webhooks Instead of Polling
+
+**Bad** (polling):
+```python
+# Check for new transactions every 10 seconds
+while True:
+    transactions = get_transactions(address)
+    time.sleep(10)
+```
+**Cost**: 8,640 requests/day (exceeds Developer tier quota!)
+
+**Good** (webhooks):
+```python
+# Webhook delivers new transactions as they happen
+# 0 polling requests, only create subscription once
+create_webhook_subscription(addresses=[address])
+```
+**Cost**: 1 request total 🎯
+
+#### 2. Implement Client-Side Caching
+
+```python
+from functools import lru_cache
+import time
+
+@lru_cache(maxsize=100)
+def get_portfolio(address, ttl_hash):
+    return fetch_wallet_portfolio(address)
+
+# Cache for 5 minutes
+def get_ttl_hash(seconds=300):
+    return round(time.time() / seconds)
+
+# Usage
+portfolio = get_portfolio(address, get_ttl_hash())
+```
+
+#### 3. Use Filters to Reduce Data Volume
+
+Smaller responses = faster processing = fewer timeout retries:
+
+```
+Use listWalletTransactions with:
+- filter[chain_ids]: "ethereum"
+- filter[trash]: "only_non_trash"
+- page[size]: 50
+```
+
+### Monitoring Rate Limit Status
+
+The server logs rate limit events:
+
+```
+WARNING: Rate limit exceeded (url=/v1/wallets/.../transactions, retry_after=30s)
+INFO: Retrying request after rate limit (attempt=2)
+INFO: Request succeeded after 2 retry attempts
+```
+
+Enable **DEBUG** logging to see detailed retry information:
+
+```yaml
+logging:
+  level: "DEBUG"
+```
+
+### Disabling Automatic Retry
+
+To disable automatic retry (e.g., for testing):
+
+```yaml
+retry_policy:
+  max_attempts: 0  # Disable retries
+```
+
+Now `429` responses will immediately raise `RateLimitError`.
+
+---
+
+## Error Handling - 202 Accepted (Wallet Indexing)
+
+When you query a **newly created wallet** (first request for that address), Zerion may return `202 Accepted` instead of `200 OK`. This means:
+
+> "Wallet is being indexed. Data will be ready in 2-10 seconds."
+
+### Automatic 202 Retry
+
+The MCP server **automatically retries** `202` responses with a fixed delay:
+
+```
+Request → 202 Accepted (indexing...)
+ ↓ Wait 3 seconds
+Retry 1 → 202 Accepted (still indexing...)
+ ↓ Wait 3 seconds
+Retry 2 → 200 OK (indexing complete!)
+```
+
+**You don't see `202` responses** - the server handles them transparently.
+
+### When Does 202 Occur?
+
+- **First request to a new wallet address**: Zerion hasn't indexed it yet
+- **Recently created on-chain wallet**: Blockchain confirmed, Zerion indexing in progress
+- **Rare edge case**: Heavy load on Zerion's indexing service
+
+**Typical indexing time**: 2-10 seconds (usually 3-5 seconds).
+
+### 202 Configuration
+
+Customize retry behavior in `config.yaml`:
+
+```yaml
+wallet_indexing:
+  # Delay between retries (seconds)
+  retry_delay: 3
+
+  # Maximum retry attempts
+  max_retries: 3
+
+  # Automatically retry (recommended: true)
+  auto_retry: true
+```
+
+**Total wait time**: `retry_delay × max_retries` (e.g., 3s × 3 = 9 seconds).
+
+### 202 Error Messages
+
+If indexing times out after max retries:
+
+```
+WalletIndexingError: Wallet is still being indexed by Zerion.
+Tried 3 times over 9 seconds. Please retry in 30-60 seconds.
+```
+
+**Next steps**:
+1. Wait 30-60 seconds for Zerion to complete indexing
+2. Retry your request
+3. If issue persists, contact api@zerion.io
+
+### Disabling 202 Auto-Retry
+
+To disable automatic retry (e.g., for instant feedback):
+
+```yaml
+wallet_indexing:
+  auto_retry: false
+```
+
+Now `202` responses will immediately raise:
+
+```
+WalletIndexingError: Wallet indexing in progress. This is a
+new wallet address for Zerion. Enable auto_retry in
+configuration or wait and retry manually.
+```
+
+### 202 Logging
+
+The server logs indexing events:
+
+```
+INFO: Wallet indexing in progress, will retry (retry_delay=3s, max_retries=3)
+INFO: Retrying wallet indexing request (attempt=1/3)
+INFO: Wallet indexing completed successfully (attempts=2, total_wait=6s)
+```
+
+Or if timeout:
+
+```
+WARNING: Wallet indexing timeout (attempts=3, total_wait=9s)
+```
+
+### Troubleshooting 202 Errors
+
+#### "Indexing timeout after 3 retries"
+
+**Cause**: Wallet indexing taking longer than expected (>9 seconds).
+
+**Solution**:
+1. Increase `max_retries` or `retry_delay`:
+   ```yaml
+   wallet_indexing:
+     retry_delay: 5
+     max_retries: 5
+   ```
+   New total wait: 5s × 5 = 25 seconds
+
+2. Wait 1-2 minutes and retry manually
+
+#### "This is a new wallet address"
+
+**Cause**: Normal behavior for first request to a wallet.
+
+**Solution**: No action needed if `auto_retry: true` (default). The server will retry automatically.
 
 ---
 

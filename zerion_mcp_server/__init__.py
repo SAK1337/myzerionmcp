@@ -10,6 +10,7 @@ from fastmcp.server.openapi import RouteMap, MCPType
 from .config import ConfigManager
 from .errors import ConfigError, NetworkError, APIError, ValidationError
 from .logger import setup_logging, get_logger
+from .retry_client import RetryAsyncClient
 
 
 def main(transport: str = "stdio"):
@@ -93,13 +94,19 @@ def main(transport: str = "stdio"):
     
     # Setup headers (API key from config)
     headers = {"Authorization": config.api_key}
-    logger.debug("HTTP client configured", extra={"base_url": config.base_url})
-    
-    # Create HTTP client
-    client = httpx.AsyncClient(
+    logger.debug("HTTP client configured", extra={
+        "base_url": config.base_url,
+        "retry_enabled": True,
+        "auto_retry_202": config.indexing_config.get("auto_retry", True)
+    })
+
+    # Create HTTP client with retry logic
+    client = RetryAsyncClient(
         base_url=config.base_url,
         headers=headers,
-        timeout=30.0
+        timeout=30.0,
+        retry_config=config.retry_config,
+        indexing_config=config.indexing_config
     )
     
     # Create MCP server
