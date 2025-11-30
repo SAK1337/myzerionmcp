@@ -23,6 +23,12 @@ logging:
   # Log format: text (human-readable) or json (structured)
   format: "text"
 
+# Webhook Configuration (optional)
+# Note: Webhooks require a separate HTTP receiver service.
+# The MCP server manages subscriptions but does not receive webhook payloads.
+# Set this for testing with webhook.site or your production receiver.
+# webhook_callback_url: "${WEBHOOK_CALLBACK_URL}"
+
 # Environment variable overrides (highest priority):
 # - ZERION_API_KEY: API key (required)
 # - ZERION_BASE_URL: Override base_url
@@ -30,3 +36,4 @@ logging:
 # - LOG_LEVEL: Override logging.level
 # - LOG_FORMAT: Override logging.format
 # - CONFIG_PATH: Path to this config file
+# - WEBHOOK_CALLBACK_URL: Default webhook callback URL (optional)

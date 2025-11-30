@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec list:*)",
+      "Bash(openspec validate:*)",
+      "Bash(openspec show:*)",
+      "Bash(openspec diff:*)",
+      "Bash(python:*)",
+      "Bash(timeout 5 python:*)",
+      "Bash(openspec archive add-webhook-support:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

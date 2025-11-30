@@ -1331,6 +1331,358 @@ paths:
           $ref: '#/components/responses/UnauthenticatedError'
         '429':
           $ref: '#/components/responses/TooManyRequests.yaml'
+  /v1/tx-subscriptions/:
+    post:
+      operationId: createTxSubscription
+      summary: Create transaction subscription webhook
+      description: |
+        Creates a new transaction subscription that sends webhooks to the specified callback URL whenever monitored addresses have new transactions.
+
+        Supports both EVM chains (Ethereum, Base, Optimism, etc.) and Solana.
+
+        **Important**: The callback URL must be a publicly accessible HTTPS endpoint. The MCP server manages subscriptions but does not receive webhooks - you need a separate HTTP service to receive webhook POST requests.
+
+        **Limitations**:
+        - Developer keys: Limited subscriptions (1-5), shorter validity periods
+        - Callback hosts may need approval for production use
+        - Contact api@zerion.io for enterprise webhook quotas
+      tags:
+        - webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - addresses
+                - callback_url
+              properties:
+                addresses:
+                  type: array
+                  description: Array of wallet addresses to monitor (EVM or Solana addresses)
+                  minItems: 1
+                  items:
+                    type: string
+                  example: ["0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"]
+                callback_url:
+                  type: string
+                  format: uri
+                  description: HTTPS URL that will receive POST webhook notifications
+                  example: "https://webhook.site/dd3c5376-2472-4b3f-af38-d75cc20ad1a2"
+                chain_ids:
+                  type: array
+                  description: Optional array of chain IDs to restrict monitoring. If omitted, monitors all supported chains.
+                  items:
+                    type: string
+                  example: ["ethereum", "base"]
+      responses:
+        '201':
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: "callback"
+                      id:
+                        type: string
+                        description: Subscription callback ID
+                        example: "bf300927-3f57-4d00-a01a-f7b75bd9b8de"
+                      attributes:
+                        type: object
+                        properties:
+                          address:
+                            type: string
+                            example: "0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"
+                          callback_url:
+                            type: string
+                            example: "https://webhook.site/test"
+                          timestamp:
+                            type: string
+                            format: date-time
+                            example: "2025-10-16T10:56:50.047643374Z"
+                      relationships:
+                        type: object
+                        properties:
+                          subscription:
+                            type: object
+                            properties:
+                              data:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    description: Subscription ID for management operations
+                                    example: "61f13641-443e-4068-932b-c28edeaefd85"
+                                  type:
+                                    type: string
+                                    example: "tx-subscriptions"
+        '400':
+          $ref: '#/components/responses/MalformedParameters'
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests.yaml'
+    get:
+      operationId: listTxSubscriptions
+      summary: List all transaction subscriptions
+      description: |
+        Returns a list of all active transaction subscriptions associated with the current API key.
+
+        Use this to view all monitored addresses and their webhook configurations.
+      tags:
+        - webhooks
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: "tx-subscriptions"
+                        id:
+                          type: string
+                          example: "61f13641-443e-4068-932b-c28edeaefd85"
+                        attributes:
+                          type: object
+                          properties:
+                            addresses:
+                              type: array
+                              items:
+                                type: string
+                              example: ["0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"]
+                            callback_url:
+                              type: string
+                              example: "https://webhook.site/test"
+                            chain_ids:
+                              type: array
+                              items:
+                                type: string
+                              example: ["ethereum", "base"]
+                            created_at:
+                              type: string
+                              format: date-time
+                            enabled:
+                              type: boolean
+                              description: Whether subscription is active
+                              example: true
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests.yaml'
+  '/v1/tx-subscriptions/{id}':
+    get:
+      operationId: getTxSubscription
+      summary: Get transaction subscription by ID
+      description: |
+        Retrieves details of a specific transaction subscription.
+
+        Returns the subscription configuration including monitored addresses, callback URL, and chain filters.
+      tags:
+        - webhooks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: string
+            example: "61f13641-443e-4068-932b-c28edeaefd85"
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: "tx-subscriptions"
+                      id:
+                        type: string
+                        example: "61f13641-443e-4068-932b-c28edeaefd85"
+                      attributes:
+                        type: object
+                        properties:
+                          addresses:
+                            type: array
+                            items:
+                              type: string
+                            example: ["0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990"]
+                          callback_url:
+                            type: string
+                            example: "https://webhook.site/test"
+                          chain_ids:
+                            type: array
+                            items:
+                              type: string
+                            example: ["ethereum", "base"]
+                          created_at:
+                            type: string
+                            format: date-time
+                          enabled:
+                            type: boolean
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          example: "Not Found"
+                        detail:
+                          type: string
+                          example: "Subscription not found"
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests.yaml'
+    patch:
+      operationId: updateTxSubscription
+      summary: Update transaction subscription
+      description: |
+        Updates an existing transaction subscription.
+
+        You can modify the monitored addresses, callback URL, or chain filters.
+        Changes take effect immediately.
+      tags:
+        - webhooks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: string
+            example: "61f13641-443e-4068-932b-c28edeaefd85"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                addresses:
+                  type: array
+                  description: Updated array of wallet addresses to monitor
+                  items:
+                    type: string
+                  example: ["0x42b9dF65B219B3dD36FF330A4dD8f327A6Ada990", "0xNewAddress"]
+                callback_url:
+                  type: string
+                  format: uri
+                  description: Updated callback URL
+                  example: "https://new-webhook.site/endpoint"
+                chain_ids:
+                  type: array
+                  description: Updated chain filters
+                  items:
+                    type: string
+                  example: ["ethereum", "base", "optimism"]
+      responses:
+        '200':
+          description: Subscription updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        example: "tx-subscriptions"
+                      id:
+                        type: string
+                      attributes:
+                        type: object
+                        properties:
+                          addresses:
+                            type: array
+                            items:
+                              type: string
+                          callback_url:
+                            type: string
+                          chain_ids:
+                            type: array
+                            items:
+                              type: string
+        '400':
+          $ref: '#/components/responses/MalformedParameters'
+        '404':
+          description: Subscription not found
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests.yaml'
+    delete:
+      operationId: deleteTxSubscription
+      summary: Delete transaction subscription
+      description: |
+        Permanently deletes a transaction subscription.
+
+        No further webhook notifications will be sent. This action cannot be undone.
+      tags:
+        - webhooks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: string
+            example: "61f13641-443e-4068-932b-c28edeaefd85"
+      responses:
+        '204':
+          description: Subscription deleted successfully (no content)
+        '404':
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          example: "Not Found"
+                        detail:
+                          type: string
+                          example: "Subscription does not exist"
+        '401':
+          $ref: '#/components/responses/UnauthenticatedError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests.yaml'
 components:
   securitySchemes:
     APIKeyBasicAuth:

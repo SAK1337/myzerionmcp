@@ -10,7 +10,7 @@ from zerion_mcp_server.errors import NetworkError, APIError, ValidationError
 import asyncio
 import yaml
 import uvicorn
-from fastmcp import FastMCP, McpAsyncClient
+from fastmcp import FastMCP
 from fastmcp.server.openapi import RouteMap, MCPType
 
 
