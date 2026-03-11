@@ -1,887 +1,330 @@
 # Zerion MCP Server - Gap Analysis
 
-**Date:** 2025-11-30
+**Original Date:** 2025-11-30
+**Updated:** 2026-02-12
 **Version:** 0.1.0
-**Purpose:** Identify missing functionality between Zerion API capabilities and current MCP implementation
+**Reviewer:** Central Command (OpenClaw)
 
 ---
 
-## Executive Summary → ✅ ALL GAPS RESOLVED
+## Executive Summary
 
-This gap analysis compared the comprehensive capabilities of the Zerion API against the Zerion MCP Server implementation.
+The original gap analysis (2025-11-30) declared all gaps resolved. After a full code review of the actual implementation, the documentation claims are **overstated** relative to the codebase reality. The server works — it auto-generates MCP tools from an OpenAPI spec via FastMCP, has solid retry/error handling, and structured logging. But several "implemented" items are actually just **documented**, not code-implemented, and the project has real engineering gaps that weren't addressed.
 
-**As of 2025-11-30, ALL identified functionality gaps have been resolved:**
+### What's Actually Solid
+- ✅ OpenAPI-driven tool generation (20 endpoints → MCP tools automatically)
+- ✅ Retry client with exponential backoff for 429s
+- ✅ 202 Accepted (wallet indexing) auto-retry
+- ✅ Configuration management (YAML + env vars + validation)
+- ✅ Structured logging (JSON + text formatters, sensitive data redaction)
+- ✅ Custom error hierarchy (ConfigError, NetworkError, APIError, RateLimitError, WalletIndexingError)
+- ✅ Pagination utility (fetch_all_pages helper)
+- ✅ Docker support (Dockerfile + docker-compose)
 
-1. ✅ **Webhooks and Real-Time Notifications** - 5 endpoints implemented (create, list, get, update, delete)
-2. ✅ **Advanced Filtering and Query Parameters** - All filters documented (chain_ids, trash, operation_types, positions, etc.)
-3. ✅ **DeFi-Specific Features** - `only_complex` filter validated and documented
-4. ✅ **Webhook Management Operations** - Full lifecycle management implemented
-5. ✅ **Testnet Support** - `X-Env` header support added to 9 endpoints
-6. ✅ **Pagination Handling** - Manual and automatic pagination fully implemented
-7. ✅ **Rate Limit Management** - Exponential backoff, 429 handling, configurable retries
-8. ✅ **202 Accepted Handling** - Auto-retry for newly indexed wallets
-9. ✅ **Multi-Currency Support** - Full documentation for usd, eth, eur, btc
-10. ✅ **Error Handling** - Comprehensive error codes and troubleshooting hints
-11. ✅ **Operational Capabilities** - Multi-chain, DeFi protocol, and NFT metadata documented
-12. ✅ **Auto-Pagination Utility** - fetch_all_pages helper implemented
+### What's Documented But Not Code-Implemented
+- ⚠️ Webhook signature verification — documented in README but zero code for it
+- ⚠️ Auto-pagination integration — `pagination.py` exists but is never called by the server
+- ⚠️ Testnet X-Env header — documented but the server doesn't inject/manage it; relies entirely on OpenAPI spec exposing it as a parameter
 
-**Current Status:**
-- ✅ **All Tier 1 (CRITICAL) recommendations:** Complete
-- ✅ **All Tier 2 (HIGH) recommendations:** Complete
-- ✅ **All Tier 3 (MEDIUM) recommendations:** Complete
-- ✅ **All Tier 4 (LOW) recommendations:** Complete
-
-**Implementation Summary:**
-- 5 webhook endpoints implemented
-- 1,200+ lines of new documentation in README
-- 14 webhook integration tests (100% passing)
-- 8 OpenSpec capabilities validated
-- Comprehensive configuration options via config.yaml
+### What's Actually Missing
+- ❌ No CI/CD pipeline
+- ❌ No integration tests that hit a real or mocked running server
+- ❌ Tests can't run (Python 3.14 on this machine, project requires 3.11+, dependencies not installed)
+- ❌ No type checking (no mypy/pyright config)
+- ❌ No linting config (no ruff/flake8/black)
+- ❌ Security: API key hardcoded in `config.yaml` (committed to git)
+- ❌ Healthcheck in Dockerfile is a no-op (`python -c "import sys; sys.exit(0)"` always passes)
+- ❌ No lock file (no `requirements.txt` lock or `uv.lock`)
 
 ---
 
-## 1. Core API Coverage
+## 1. Code Quality Recommendations
 
-### 1.1 Wallet Endpoints
+### 1.1 API Key Leaked in Config — **CRITICAL**
 
-| Capability | Zerion API Availability | MCP Implementation | Status | Gap Priority |
-|------------|------------------------|-------------------|---------|--------------|
-| **Portfolio Overview** | ✅ `GET /v1/wallets/{address}/portfolio` | ✅ `getWalletPortfolio` | **Implemented** | - |
-| **Fungible Positions** | ✅ `GET /v1/wallets/{address}/positions` | ✅ `listWalletPositions` | **Implemented** | - |
-| **NFT Portfolio Overview** | ✅ `GET /v1/wallets/{address}/nft-portfolio` | ✅ `getWalletNftPortfolio` | **Implemented** | - |
-| **NFT Positions (Detailed)** | ✅ `GET /v1/wallets/{address}/nft-positions` | ✅ `listWalletNFTPositions` | **Implemented** | - |
-| **NFT Collections** | ✅ `GET /v1/wallets/{address}/nft-collections` | ✅ `listWalletNFTCollections` | **Implemented** | - |
-| **Transaction History** | ✅ `GET /v1/wallets/{address}/transactions` | ✅ `listWalletTransactions` | **Implemented** | - |
-| **Balance Chart (Time Series)** | ✅ `GET /v1/wallets/{address}/chart` | ✅ `getWalletChart` | **Implemented** | - |
-| **Profit & Loss (PnL)** | ✅ `GET /v1/wallets/{address}/pnl` | ✅ `getWalletPNL` | **Implemented** | - |
-
-**Assessment:** ✅ **Core wallet endpoints are well-covered**
-
----
-
-### 1.2 Metadata & Reference Data
-
-| Capability | Zerion API Availability | MCP Implementation | Status | Gap Priority |
-|------------|------------------------|-------------------|---------|--------------|
-| **List Supported Chains** | ✅ `GET /v1/chains` | ✅ `listChains` | **Implemented** | - |
-| **Get Chain by ID** | ✅ `GET /v1/chains/{id}` | ✅ `getChainById` | **Implemented** | - |
-| **List Fungible Assets** | ✅ `GET /v1/fungibles` | ✅ `listFungibles` | **Implemented** | - |
-| **Get Fungible by ID** | ✅ `GET /v1/fungibles/{id}` | ✅ `getFungibleById` | **Implemented** | - |
-| **Fungible Price Chart** | ✅ `GET /v1/fungibles/{id}/chart` | ✅ `getFungibleChart` | **Implemented** | - |
-| **List NFTs (General)** | ✅ `GET /v1/nfts` | ✅ `listNFTs` | **Implemented** | - |
-| **Get NFT by ID** | ✅ `GET /v1/nfts/{id}` | ✅ `getNFTById` | **Implemented** | - |
-
-**Assessment:** ✅ **Metadata endpoints are well-covered**
-
----
-
-### 1.3 Gas & Swap Endpoints
-
-| Capability | Zerion API Availability | MCP Implementation | Status | Gap Priority |
-|------------|------------------------|-------------------|---------|--------------|
-| **List Gas Prices** | ✅ `GET /v1/gas` | ✅ `listGasPrices` | **Implemented** | - |
-| **Swap Fungibles (Bridge)** | ✅ `GET /v1/swap` | ✅ `swapFungibles` | **Implemented** | - |
-| **Swap Offers** | ✅ `GET /v1/swap/offers` | ✅ `swapOffers` | **Implemented** | - |
-
-**Assessment:** ✅ **Gas and swap endpoints are covered**
-
----
-
-## 2. Critical Missing Functionality → ✅ NOW IMPLEMENTED
-
-### 2.1 Webhooks / Transaction Subscriptions ✅ **IMPLEMENTED** (2025-11-30)
-
-**Zerion API Capabilities:**
-- Create transaction subscriptions for real-time push notifications
-- Manage subscriptions (enable/disable, update, delete)
-- Support for both EVM and Solana chains
-- Webhook payload with full transaction details
-- Signature verification for webhook security
-- Up to 3 retry attempts on delivery failure
-
-**Implemented Endpoints:**
-
-| Endpoint | Purpose | Status |
-|----------|---------|--------|
-| `POST /v1/tx-subscriptions` | Create new webhook subscription | ✅ **createTxSubscription** |
-| `GET /v1/tx-subscriptions` | List all subscriptions | ✅ **listTxSubscriptions** |
-| `GET /v1/tx-subscriptions/{id}` | Get subscription details | ✅ **getTxSubscription** |
-| `PATCH /v1/tx-subscriptions/{id}` | Update subscription (addresses, chains, callback URL) | ✅ **updateTxSubscription** |
-| `DELETE /v1/tx-subscriptions/{id}` | Delete subscription | ✅ **deleteTxSubscription** |
-
-**Implementation Details:**
-- ✅ All 5 webhook management endpoints implemented
-- ✅ Comprehensive documentation in README (200+ lines)
-- ✅ Architecture guide for webhook receiver setup
-- ✅ Examples for webhook.site, Flask, and Node.js receivers
-- ✅ Best practices and security considerations documented
-- ✅ Integration tests (14 tests, 100% passing)
-
-**Benefits Realized:**
-- ✅ **Rate Limit Conservation:** Sub-second notifications eliminate polling waste
-- ✅ **Real-Time Capabilities:** Full support for notification systems and alerts
-- ✅ **Scalability:** Monitor hundreds of wallets without quota waste
-- ✅ **Cost Efficiency:** Optimal API quota usage on all tiers
-
-**Use Cases Enabled:**
-- ✅ Wallet transaction alerts for mobile apps
-- ✅ SocialFi notification systems (like Farcaster integrations)
-- ✅ Automated trading/bot systems with immediate transaction awareness
-- ✅ Portfolio tracking apps that update "only when new transactions occur"
-
-**See:** `IMPLEMENTATION_SUMMARY.md` for full webhook implementation details
-
----
-
-### 2.2 Advanced Query Parameters & Filtering ✅ **IMPLEMENTED & DOCUMENTED** (2025-11-30)
-
-**Implementation Status:**
-All advanced query parameters from the Zerion OpenAPI spec are exposed through auto-generated MCP tools and comprehensively documented.
-
-#### 2.2.1 Position Filtering - `only_complex` Parameter ✅ **IMPLEMENTED**
-
-**Zerion API Feature:**
-```http
-GET /v1/wallets/{address}/positions/?filter[positions]=only_complex
+**Issue:** `config.yaml` contains a real (or real-looking) API key:
+```yaml
+api_key: "zk_dev_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
-
-**Purpose:** Isolate **DeFi protocol positions only** (lending, staking, LP tokens, rewards) from simple fungible token balances.
-
-**Current Status:** ✅ **Fully Implemented and Documented**
-
-**Implementation Details:**
-- ✅ `filter[positions]` parameter exposed in `listWalletPositions` and `getWalletPortfolio`
-- ✅ Three filter options: `only_simple`, `only_complex`, `no_filter`
-- ✅ Comprehensive documentation in README (100+ lines)
-- ✅ Examples for DeFi analytics dashboards
-- ✅ Use cases documented: institutional risk management, yield tracking, portfolio categorization
-
-**Benefits Realized:**
-- ✅ Can build specialized DeFi analytics dashboards
-- ✅ Separate high-risk complex positions from liquid assets
-- ✅ Supports institutional-grade risk management and accounting
-- ✅ Enables yield farming trackers and DeFi portfolio analyzers
-
----
-
-#### 2.2.2 Transaction Filtering Parameters ✅ **IMPLEMENTED**
-
-**Zerion API Capabilities:**
-
-| Filter Parameter | Purpose | MCP Support |
-|------------------|---------|-------------|
-| `filter[chain_ids]` | Filter transactions by specific chains (e.g., `ethereum,base`) | ✅ **Documented** |
-| `filter[operation_types]` | Filter by operation (e.g., `trade`, `transfer`, `execute`) | ✅ **Documented** |
-| `filter[asset_types]` | Filter by asset type (fungible, NFT, etc.) | ✅ **Available** |
-| `filter[fungible_ids]` | Filter transactions involving specific tokens | ✅ **Available** |
-| `filter[trash]` | Hide spam/dust transfers (`only_non_trash`, `only_trash`, `no_filter`) | ✅ **Documented** |
-| `currency` | Set price currency (usd, eth, eur, btc) | ✅ **Documented** |
-| `page[size]` | Control page size (e.g., 100) | ✅ **Documented** |
-| `page[after]` | Cursor-based pagination | ✅ **Documented** |
-
-**Implementation Details:**
-- ✅ All filter parameters available through OpenAPI spec
-- ✅ Dedicated "Advanced Filtering" section in README (200+ lines)
-- ✅ Filter applicability matrix documented
-- ✅ Query optimization best practices included
-- ✅ Common filter combinations provided
-
-**Benefits Realized:**
-- ✅ Full ability to query specific transaction types
-- ✅ Can filter spam/dust from clean transaction history
-- ✅ Cross-chain filtering fully available
-- ✅ Optimized API quota usage through precise filtering
-
----
-
-#### 2.2.3 Portfolio & Position Filtering ✅ **IMPLEMENTED**
-
-**Implemented Filter Capabilities:**
-
-| Filter | Applies To | Status |
-|--------|-----------|--------|
-| `filter[chain_ids]` | Portfolio, Positions, NFTs | ✅ **Documented** |
-| `filter[asset_types]` | Portfolio, Positions | ✅ **Available** |
-| `filter[dapp_ids]` | Positions | ✅ **Documented** (note: `dapp_ids` not `protocol_ids`) |
-| `filter[position_types]` | Positions | ✅ **Documented** |
-| `filter[trash]` | All endpoints | ✅ **Documented** |
-| `filter[collections_ids]` | NFT Positions | ✅ **Available** |
-| `sort` | Positions, Collections | ✅ **Available** |
-
-**Implementation Details:**
-- ✅ Complete filter validation via OpenAPI spec
-- ✅ Examples for each filter type
-- ✅ Multi-filter combination patterns documented
-- ✅ Performance optimization guidance included
-
-**Benefits Realized:**
-- ✅ Can retrieve specific chains only (quota savings)
-- ✅ Can isolate lending vs. staking positions
-- ✅ Spam filtering keeps responses clean
-- ✅ Efficient data transfer and processing
-
----
-
-### 2.3 Testnet Support ✅ **IMPLEMENTED & DOCUMENTED** (2025-11-30)
-
-**Zerion API Feature:**
-```http
-X-Env: testnet
-```
-
-**Purpose:** Access testnet data (e.g., Monad Testnet, Ethereum Sepolia) by setting custom header.
-
-**Current Status:** ✅ **Fully Implemented and Documented**
-
-**Implementation Details:**
-- ✅ `X-Env` header parameter exposed in all supported endpoints
-- ✅ Comprehensive testnet documentation in README (80+ lines)
-- ✅ Supported testnet endpoints documented (9 endpoints)
-- ✅ Testnet chain list provided (Sepolia, Monad, Base Sepolia, etc.)
-- ✅ Development workflow guidance included
-- ✅ Testnet limitations clearly documented
-
-**Supported Testnet Endpoints:**
-- `listWalletPositions`, `getWalletPortfolio`, `listWalletTransactions`
-- `listWalletNFTPositions`, `listWalletNFTCollections`, `getWalletNftPortfolio`
-- `listFungibles`, `getFungibleById`, `listChains`
-
-**Benefits Realized:**
-- ✅ Can test applications on testnets before mainnet deployment
-- ✅ Developers can use testnet data during development (safe, free)
-- ✅ Supports testnet-first development workflows
-- ✅ Testnet vs. mainnet behavior fully documented
-
----
-
-### 2.4 Pagination Handling ✅ **IMPLEMENTED & DOCUMENTED** (2025-11-30)
-
-**Zerion API Behavior:**
-- Uses cursor-based pagination via `page[after]` and `page[size]`
-- Returns `links.next` URL for next page
-- Large result sets require multiple requests
-
-**Current Status:** ✅ **Fully Implemented and Documented**
-
-**Implementation Details:**
-- ✅ Manual pagination fully documented (page[size], page[after])
-- ✅ Automatic pagination utility provided (Python SDK)
-- ✅ Comprehensive pagination section in README (150+ lines)
-- ✅ Configuration options documented (default_page_size, max_auto_pages)
-- ✅ Best practices and quota impact examples included
-- ✅ Multi-page retrieval patterns documented
-
-**Features:**
-- ✅ Manual cursor-based pagination supported
-- ✅ Auto-pagination helper for Python SDK (fetch_all_pages)
-- ✅ Page size control (max 100 items)
-- ✅ Safety limits for auto-pagination (configurable)
-- ✅ Quota impact calculations documented
-
-**Benefits Realized:**
-- ✅ Auto-generated tools support pagination parameters
-- ✅ Automatic pagination mechanism available
-- ✅ Users can retrieve full transaction history for active wallets
-- ✅ Efficient pagination with filter optimization
-
----
-
-### 2.5 Rate Limit & Error Handling ✅ **IMPLEMENTED & DOCUMENTED** (2025-11-30)
-
-**Zerion API Behavior:**
-- Returns `429 Too Many Requests` when rate limit exceeded
-- Free tier: 2 RPS, ~5K/day; 30-second reset on daily limit hit
-- Paid tiers: 50-1000+ RPS
-
-**Current Status:** ✅ **Fully Implemented and Documented**
-
-**Implementation Details:**
-- ✅ Automatic retry with exponential backoff
-- ✅ `Retry-After` header parsing from 429 responses
-- ✅ Configurable retry policy (max_attempts, base_delay, max_delay)
-- ✅ Comprehensive rate limiting section in README (150+ lines)
-- ✅ Rate limit monitoring and logging
-- ✅ Detailed error messages with retry guidance
-
-**Features:**
-- ✅ Exponential backoff with jitter (configurable base: 1s, max: 60s)
-- ✅ Maximum retry attempts (default: 5, configurable)
-- ✅ Rate limit event logging (warnings at key thresholds)
-- ✅ User-facing rate limit error messages with actionable guidance
-- ✅ Retry policy configuration in config.yaml
-
-**Benefits Realized:**
-- ✅ Automatic handling of 429 responses (transparent to users)
-- ✅ Rate limit status surfaced through logging
-- ✅ Exponential backoff prevents quota exhaustion
-- ✅ Configurable for different API tiers
-
-**See:** README "Rate Limiting - Automatic Retry with Backoff" section
-
----
-
-### 2.6 Response Status Code Handling (202 Accepted) ✅ **IMPLEMENTED & DOCUMENTED** (2025-11-30)
-
-**Zerion API Feature:**
-- `202 Accepted` status for newly indexed wallets
-- Requires client to retry after initial request
-- Applies to portfolio, positions, NFT endpoints
-
-**Current Status:** ✅ **Fully Implemented and Documented**
-
-**Implementation Details:**
-- ✅ Automatic 202 Accepted detection and retry
-- ✅ Configurable retry delay (default: 3 seconds)
-- ✅ Configurable max retries (default: 3 attempts)
-- ✅ Comprehensive 202 handling section in README (100+ lines)
-- ✅ User-friendly error messages for indexing timeouts
-- ✅ Wallet indexing configuration in config.yaml
-
-**Features:**
-- ✅ Automatic retry on 202 responses (transparent to users)
-- ✅ Fixed delay between retries (default: 3s)
-- ✅ Configurable max retries (default: 3, max wait: 9s)
-- ✅ Detailed logging of indexing events
-- ✅ Option to disable auto-retry if needed
-
-**Example Flow:**
-```
-1. Request wallet portfolio for 0xNEW_WALLET
-2. Receive 202 Accepted (wallet indexing)
-3. Wait 3 seconds (automatic)
-4. Retry request (automatic)
-5. Receive 200 OK with data
-```
-
----
-
-## 3. Feature Parity Matrix
-
-### Legend
-- ✅ **Implemented:** Feature available in MCP server
-- ⚠️ **Partial:** Feature exists but missing parameters/capabilities
-- ❌ **Missing:** Feature not available
-- ❓ **Unknown:** Implementation status unclear
-
-| Feature Category | Sub-Feature | Status | Priority | Last Validated |
-|------------------|-------------|--------|----------|----------------|
-| **Webhooks** | Create subscription | ✅ | CRITICAL | 2025-11-30 |
-| **Webhooks** | List subscriptions | ✅ | CRITICAL | 2025-11-30 |
-| **Webhooks** | Update/Delete subscription | ✅ | HIGH | 2025-11-30 |
-| **Webhooks** | Enable/Disable subscription | ⚠️ | MEDIUM | N/A (not in API) |
-| **Webhooks** | Webhook signature verification | ⚠️ | HIGH | Future enhancement |
-| **Filtering** | DeFi positions (`only_complex`) | ✅ | HIGH | 2025-11-30 |
-| **Filtering** | Chain filtering (`filter[chain_ids]`) | ✅ | HIGH | 2025-11-30 |
-| **Filtering** | Transaction type filtering | ✅ | MEDIUM | 2025-11-30 |
-| **Filtering** | Spam filtering (`filter[trash]`) | ✅ | MEDIUM | 2025-11-30 |
-| **Filtering** | Protocol filtering | ✅ | MEDIUM | 2025-11-30 |
-| **Filtering** | Position type filtering | ✅ | MEDIUM | 2025-11-30 |
-| **Filtering** | Sort parameters | ✅ | LOW | 2025-11-30 |
-| **Pagination** | Cursor-based pagination | ✅ | MEDIUM | 2025-11-30 |
-| **Pagination** | Page size control | ✅ | LOW | 2025-11-30 |
-| **Pagination** | Auto-pagination | ✅ | LOW | 2025-11-30 |
-| **Testnet** | Testnet header support (X-Env) | ✅ | MEDIUM | 2025-11-30 |
-| **Rate Limits** | 429 detection | ✅ | MEDIUM | 2025-11-30 |
-| **Rate Limits** | Retry-After handling | ✅ | MEDIUM | 2025-11-30 |
-| **Rate Limits** | Exponential backoff | ✅ | LOW | 2025-11-30 |
-| **Async Status** | 202 Accepted handling | ✅ | MEDIUM | 2025-11-30 |
-| **Currency** | Multi-currency support (usd, eth, eur, btc) | ✅ | LOW | 2025-11-30 |
-| **Response** | Include relationships | ✅ | LOW | Inherent to API |
-
----
-
-## 4. Operational & Architectural Gaps
-
-### 4.1 Multi-Chain Aggregation
-
-**Zerion Capability:**
-> "Fetch data across **all supported chains in a single API call**"
-
-**Current MCP Status:** ✅ **VALIDATED & DOCUMENTED** (2025-11-30)
-
-**Validation Results:**
-- ✅ Confirmed: Multi-chain aggregation is **default behavior** (no special parameters needed)
-- ✅ Endpoints return data across 100+ chains in single API call
-- ✅ Optional `filter[chain_ids]` parameter exists to limit to specific chains
-- ✅ Validated in: `getWalletPortfolio`, `listWalletPositions`, `listWalletTransactions`
-
-**Documentation:**
-- ✅ README "Operational Capabilities" section added
-- ✅ Examples showing cross-chain queries
-- ✅ Benefits vs. per-chain APIs documented (90% quota savings)
-- ✅ Use cases: Portfolio dashboards, DeFi aggregators, multi-chain analytics
-
-**Confidence:** 100% (Direct OpenAPI schema validation)
-
----
-
-### 4.2 Data Freshness & Real-Time Updates ✅ **IMPLEMENTED** (2025-11-30)
-
-**Zerion SLA:**
-- Sub-second latency for prices and balances
-- Updates within milliseconds of new blocks
-- Enterprise: 99.9% uptime guarantee
-
-**Current MCP Status:** ✅ **Webhooks Enable Real-Time Experience**
-
-**Implementation:**
-- ✅ **Webhooks implemented** - Sub-second push notifications
-- ✅ **No polling required** - Zerion pushes transaction events immediately
-- ✅ **Real-time capabilities** - Wallet monitoring, alerts, notifications
-- ✅ **Sub-second user experience** - Event-driven updates
-
-**Benefits Realized:**
-- ✅ Webhooks deliver real-time experience matching Zerion's infrastructure
-- ✅ Transaction notifications within seconds of on-chain confirmation
-- ✅ No latency from polling intervals
-- ✅ Optimal rate limit usage (push vs. pull)
-
----
-
-### 4.3 DeFi Protocol Coverage
-
-**Zerion Coverage:**
-- 8,000+ DeFi protocols tracked
-- Detailed LP position breakdowns
-- Lending/borrowing positions with collateralization data
-
-**Current MCP Status:** ✅ **VALIDATED & DOCUMENTED** (2025-11-30)
-
-**Validation Results:**
-- ✅ Confirmed: Protocol relationship data exists via `relationships.dapp` field
-- ✅ `filter[dapp_ids]` parameter exists for protocol filtering
-- ✅ Protocol metadata includes: `dapp.data.id` (e.g., "aave-v3", "uniswap-v3")
-- ✅ Position types include: staked, deposit, loan, reward, locked, margin, airdrop
-- ⚠️ Field name correction: `relationships.dapp` (not `relationships.protocol`)
-
-**Documentation:**
-- ✅ README "Operational Capabilities" section added
-- ✅ 8,000+ protocols claim documented with disclaimer
-- ✅ Protocol categories documented (DEX, Lending, Staking, Yield)
-- ✅ Examples: DeFi analytics, protocol filtering, yield tracking
-- ✅ Available fields: `dapp.data.id`, `position_type`
-
-**Confidence:** 100% (Direct OpenAPI schema validation)
-
-**See:** `OPERATIONAL_CAPABILITIES.md` for full validation report
-
----
-
-### 4.4 NFT Metadata Completeness
-
-**Zerion API Provides:**
-- Token metadata (name, description, images)
-- Floor price data (where available)
-- Collection-level aggregation
-- ERC-721 and ERC-1155 support
-
-**Current MCP Status:** ✅ **VALIDATED & DOCUMENTED** (2025-11-30)
-
-**Validation Results:**
-- ✅ Confirmed: Comprehensive NFT metadata fields exist
-- ✅ `metadata.name` - NFT name
-- ✅ `metadata.description` - NFT description
-- ✅ `metadata.content.preview` - Preview image URL
-- ✅ `metadata.content.detail` - Full-size image URL
-- ✅ `market_data.prices.floor` - Floor price (where available)
-- ✅ `metadata.attributes` - NFT traits/attributes
-- ✅ `relationships.nft_collection` - Collection relationship
-
-**Documentation:**
-- ✅ README "Operational Capabilities" section added
-- ✅ All metadata fields documented with descriptions
-- ✅ Floor price availability noted (established collections only)
-- ✅ Examples: NFT gallery, marketplace, collection analytics
-- ✅ Use cases: Gallery apps, marketplace displays, trait filtering
-
-**Confidence:** 100% (Direct OpenAPI schema validation)
-
-**See:** `OPERATIONAL_CAPABILITIES.md` for full validation report
-
----
-
-### 4.5 Authentication & Security
-
-**Current Implementation:** ✅ **Good**
-- Basic Auth with Bearer token
-- API key stored securely via environment variables
-- Headers properly configured
-
-**Potential Enhancement:**
-- ❓ API key rotation support
-- ❓ Webhook signature verification (when webhooks added)
-
----
-
-## 5. Priority Recommendations → ✅ TIER 1 & 2 COMPLETE
-
-### Tier 1: CRITICAL (Blocks Core Use Cases) → ✅ **ALL COMPLETE** (2025-11-30)
-
-1. ✅ **Webhook/Transaction Subscription Endpoints - COMPLETE**
-   - ✅ `POST /v1/tx-subscriptions` (create) → **createTxSubscription**
-   - ✅ `GET /v1/tx-subscriptions` (list) → **listTxSubscriptions**
-   - ✅ `DELETE /v1/tx-subscriptions/{id}` (delete) → **deleteTxSubscription**
-   - ✅ `GET /v1/tx-subscriptions/{id}` (get) → **getTxSubscription**
-   - ✅ `PATCH /v1/tx-subscriptions/{id}` (update) → **updateTxSubscription**
-
-   **Status:** Real-time notifications enabled, rate limits conserved, 80% of advanced use cases unlocked
-
-2. ✅ **`only_complex` Filter for Positions - COMPLETE**
-   - ✅ Verified in OpenAPI spec
-   - ✅ Documented in README (100+ lines)
-   - ✅ Examples for DeFi analytics
-
-   **Status:** DeFi-focused applications and institutional analytics fully supported
-
-3. ✅ **Comprehensive Filter Parameter Support - COMPLETE**
-   - ✅ `filter[chain_ids]` - Documented and tested
-   - ✅ `filter[trash]` - Documented and tested
-   - ✅ `filter[operation_types]` - Documented and tested
-   - ✅ `filter[positions]` - Documented and tested
-   - ✅ `filter[position_types]` - Documented and tested
-   - ✅ `filter[dapp_ids]` - Documented and tested
-
-   **Status:** Usable, efficient queries with comprehensive filtering enabled
-
----
-
-### Tier 2: HIGH (Improves Functionality & Efficiency) → ✅ **ALL COMPLETE** (2025-11-30)
-
-4. ✅ **Webhook Management Endpoints - COMPLETE**
-   - ✅ `PATCH /v1/tx-subscriptions/{id}` (update) → **updateTxSubscription**
-   - ✅ Full subscription lifecycle management
-   - ✅ Update addresses, chains, callback URLs
-
-   **Status:** Production subscription lifecycle management fully supported
-
-5. ✅ **Pagination Enhancement - COMPLETE**
-   - ✅ Pagination behavior documented (150+ lines in README)
-   - ✅ Cursor parameters exposed (page[after], page[size])
-   - ✅ Auto-pagination helper provided (fetch_all_pages)
-   - ✅ Configuration options documented
-
-   **Status:** Wallets with large transaction histories fully supported
-
-6. ✅ **Testnet Support via Headers - COMPLETE**
-   - ✅ `X-Env` header parameter added to 9 endpoints
-   - ✅ Comprehensive testnet documentation (80+ lines)
-   - ✅ Development workflow guidance included
-   - ✅ Testnet chain list documented
-
-   **Status:** Development workflows with testnet support fully enabled
-
----
-
-### Tier 3: MEDIUM (Quality of Life & Robustness) → ✅ **ALL COMPLETE** (2025-11-30)
-
-7. ✅ **Enhanced Rate Limit Handling - COMPLETE**
-   - ✅ 429 response detection
-   - ✅ Exponential backoff with jitter
-   - ✅ Retry-After header parsing
-   - ✅ Configurable retry policy
-   - ✅ Rate limit logging and monitoring
-
-   **Status:** Fully implemented with comprehensive documentation (150+ lines in README)
-
-8. ✅ **202 Accepted Status Handling - COMPLETE**
-   - ✅ Auto-retry for newly indexed wallets
-   - ✅ Configurable retry delay (default: 3s)
-   - ✅ Clear user messaging for indexing timeouts
-   - ✅ Configurable max retries
-
-   **Status:** Fully implemented with comprehensive documentation (100+ lines in README)
-
-9. ✅ **Error Message Improvements - COMPLETE**
-   - ✅ Specific error codes (APIError, ValidationError, NetworkError)
-   - ✅ Actionable troubleshooting hints in messages
-   - ✅ Detailed error context and logging
-   - ✅ User-friendly error formatting
-
-   **Status:** Comprehensive error handling implemented
-
----
-
-### Tier 4: LOW (Nice to Have) → ✅ **ALL COMPLETE** (2025-11-30)
-
-10. ✅ **Additional Filters - COMPLETE**
-    - ✅ Protocol IDs (`filter[dapp_ids]`) - Documented
-    - ✅ Position types (`filter[position_types]`) - Documented
-    - ✅ Collections (`filter[collections_ids]`) - Available
-    - ✅ Sort parameters (`sort`) - Available
-
-   **Status:** All additional filters documented and available
-
-11. ✅ **Multi-Currency Support Documentation - COMPLETE**
-    - ✅ Currency parameter support clarified (usd, eth, eur, btc)
-    - ✅ Examples for all supported currencies
-    - ✅ Endpoint currency support documented
-    - ✅ Currency-specific use cases provided
-
-   **Status:** Comprehensive currency support documentation (50+ lines in README)
-
-12. ✅ **Auto-Pagination Utility - COMPLETE**
-    - ✅ Auto-pagination helper implemented (fetch_all_pages)
-    - ✅ Configurable page size and max pages
-    - ✅ Safety limits to prevent quota exhaustion
-    - ✅ Manual pagination also documented
-
-   **Status:** Both manual and automatic pagination fully supported
-
----
-
-## 6. Architectural Recommendations
-
-### 6.1 OpenAPI Spec Validation
-
-**Issue:** Auto-generated tools may not expose all parameters documented in API guides.
+This file is tracked by git and pushed to the repo.
 
 **Recommendation:**
-- Cross-reference OpenAPI spec (`openapi_zerion.yaml`) with Zerion's official documentation
-- Validate that all filters and parameters are present in spec
-- If missing, consider:
-  - Updating OpenAPI spec file
-  - Manual tool augmentation for critical parameters
-  - Submitting spec updates to Zerion
+- [ ] Remove `config.yaml` from git tracking
+- [ ] Add `config.yaml` to `.gitignore` (currently not gitignored)
+- [ ] Rotate the API key immediately if it was ever real
+- [ ] Keep only `config.example.yaml` in the repo (already exists)
+- [ ] Document that users should copy `config.example.yaml` → `config.yaml`
+
+**Priority:** 🔴 CRITICAL
 
 ---
 
-### 6.2 Webhook Handling Architecture
+### 1.2 Dockerfile Healthcheck Is a No-Op — **HIGH**
 
-**Challenge:** MCP servers typically run in stdio mode for AI assistants; webhooks require HTTP endpoint.
-
-**Recommended Approach:**
-
-**Option A: Separate Webhook Receiver Service**
-```
-┌─────────────┐         ┌──────────────┐
-│ MCP Client  │◄────────┤  MCP Server  │
-│  (Claude)   │  stdio  │  (Zerion)    │
-└─────────────┘         └──────┬───────┘
-                              │
-                              │ Management API calls
-                              │ (create/update subscriptions)
-                              ▼
-                        ┌─────────────┐
-                        │  Zerion API │
-                        └──────┬──────┘
-                               │
-                               │ Webhooks (HTTP POST)
-                               ▼
-                        ┌──────────────┐
-                        │  Webhook     │
-                        │  Receiver    │
-                        │  (Separate   │
-                        │   Service)   │
-                        └──────────────┘
+**Issue:** The healthcheck always passes:
+```dockerfile
+HEALTHCHECK CMD python -c "import sys; sys.exit(0)"
 ```
 
-- MCP server manages subscriptions via API
-- Separate HTTP service receives webhook payloads
-- Store events in database or queue for MCP client to retrieve
+**Recommendation:**
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "from zerion_mcp_server.config import ConfigManager; ConfigManager()" || exit 1
+```
+Or better: add a `/health` endpoint when running in HTTP mode and curl it.
 
-**Option B: Hybrid Mode**
-- Add HTTP transport mode to MCP server (already in code!)
-- Use HTTP mode for webhook receiver
-- Document dual-mode deployment
-
-**Option C: Polling Fallback with Webhook Documentation**
-- Document webhook endpoints as "coming soon"
-- Provide instructions for external webhook setup
-- Allow users to integrate webhooks outside MCP
+**Priority:** 🟡 HIGH
 
 ---
 
-### 6.3 Configuration Enhancements
+### 1.3 No Dependency Lock File — **HIGH**
 
-**Current Config:** Good foundation with YAML + env vars
+**Issue:** `pyproject.toml` specifies loose version ranges (`>=`) but there's no lock file. Builds are not reproducible.
 
-**Suggested Additions:**
+**Recommendation:**
+- [ ] Add `uv` as the package manager (already standard for modern Python)
+- [ ] Generate `uv.lock` for reproducible installs
+- [ ] Or at minimum generate `requirements.txt` via `pip freeze`
+
+**Priority:** 🟡 HIGH
+
+---
+
+### 1.4 No Linting or Type Checking — **MEDIUM**
+
+**Issue:** No ruff, flake8, mypy, or pyright configuration. Code style enforcement relies entirely on developer discipline.
+
+**Recommendation:**
+Add to `pyproject.toml`:
+```toml
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+```
+
+**Priority:** 🟠 MEDIUM
+
+---
+
+### 1.5 No CI/CD Pipeline — **MEDIUM**
+
+**Issue:** No GitHub Actions, no automated test runs, no deployment pipeline.
+
+**Recommendation:**
+Create `.github/workflows/ci.yml`:
 ```yaml
-# config.yaml
-rate_limiting:
-  max_retries: 3
-  backoff_factor: 2
-  respect_retry_after: true
-
-pagination:
-  default_page_size: 100
-  max_auto_pages: 10
-
-features:
-  testnet_mode: false
-  auto_pagination: false
-  strict_mode: true  # Fail on missing params vs. ignore
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest tests/ -v --cov
+      - run: ruff check .
+      - run: mypy zerion_mcp_server/
 ```
 
----
-
-## 7. Testing Status → ✅ COMPREHENSIVE COVERAGE (2025-11-30)
-
-**Current Testing:** Comprehensive unit and integration tests with pytest
-
-**Implemented Test Coverage:**
-
-1. ✅ **Webhook Subscription Flow - COMPLETE**
-   - ✅ Create, list, update, delete subscriptions (14 tests)
-   - ✅ Mock webhook payloads
-   - ✅ Signature verification testing
-   - ✅ Error handling and edge cases
-   - ✅ 100% passing (14/14 tests)
-
-2. ✅ **Filter Parameter Validation - COMPLETE**
-   - ✅ Individual filter testing
-   - ✅ Filter combinations tested
-   - ✅ Invalid filter handling verified
-   - ✅ Filter validation tests passing
-
-3. ✅ **Pagination - COMPLETE**
-   - ✅ Multi-page retrieval tests
-   - ✅ Cursor handling verified
-   - ✅ Empty result sets tested
-   - ✅ Auto-pagination utility tests
-
-4. ✅ **Rate Limiting - COMPLETE**
-   - ✅ 429 response simulation
-   - ✅ Backoff logic verification
-   - ✅ Retry-After header parsing tests
-   - ✅ Quota exhaustion scenarios covered
-
-5. ✅ **202 Accepted Flow - COMPLETE**
-   - ✅ New wallet indexing mocked
-   - ✅ Retry behavior verified
-   - ✅ Timeout scenarios tested
+**Priority:** 🟠 MEDIUM
 
 ---
 
-## 8. Documentation Status → ✅ COMPREHENSIVE DOCUMENTATION (2025-11-30)
+## 2. Architecture Recommendations
 
-**Current README:** 2,000+ lines of comprehensive documentation
+### 2.1 Pagination Module Is Orphaned — **MEDIUM**
 
-**Completed Documentation:**
+**Issue:** `pagination.py` contains `fetch_all_pages()` and `fetch_page()` helpers, but they're never imported or used by `__init__.py` or any other module. The auto-generated FastMCP tools handle pagination parameters directly — the helper exists but isn't wired into the server.
 
-1. ✅ **Advanced Query Examples - COMPLETE**
-   - ✅ Complex position filtering (100+ lines)
-   - ✅ Multi-chain queries (150+ lines)
-   - ✅ DeFi position breakdowns with examples
-   - ✅ Filter combination patterns
+**Recommendation:**
+- [ ] Either integrate `fetch_all_pages` as a standalone MCP tool (e.g., `fetchAllWalletTransactions`) that wraps paginated endpoints
+- [ ] Or expose it as a utility users can call from the SDK
+- [ ] Or remove it if it's dead code
 
-2. ✅ **Webhook Integration Guide - COMPLETE**
-   - ✅ Setup instructions (200+ lines)
-   - ✅ Example payload handling
-   - ✅ Security best practices
-   - ✅ Webhook receiver examples (webhook.site, Flask, Node.js)
-   - ✅ Architecture diagrams
-
-3. ✅ **Rate Limit Management - COMPLETE**
-   - ✅ Tier comparison table (150+ lines)
-   - ✅ Quota optimization strategies
-   - ✅ Webhooks vs. polling decision guide
-   - ✅ Automatic retry configuration
-   - ✅ Backoff strategy documentation
-
-4. ✅ **Testnet Development Guide - COMPLETE**
-   - ✅ Header configuration (80+ lines)
-   - ✅ Testnet chain IDs documented
-   - ✅ Development workflow best practices
-   - ✅ Testnet limitations clearly stated
-   - ✅ 9 testnet-supported endpoints listed
-
-5. ✅ **Error Reference - COMPLETE**
-   - ✅ All error codes with examples
-   - ✅ Actionable troubleshooting hints
-   - ✅ Error handling patterns
-   - ✅ Retry and recovery guidance
-
-**Additional Documentation:**
-- ✅ Operational Capabilities section (145 lines)
-- ✅ Pagination guide (150+ lines)
-- ✅ Advanced Filtering section (200+ lines)
-- ✅ Multi-Currency support (50+ lines)
-- ✅ Quick start and configuration guides
+**Priority:** 🟠 MEDIUM
 
 ---
 
-## 9. Summary of Implementation Status → ✅ ALL GAPS RESOLVED (2025-11-30)
+### 2.2 Webhook Signature Verification — **MEDIUM**
 
-| Feature | Previous Status | Current Status | Implementation Date |
-|---------|----------------|----------------|---------------------|
-| **Webhooks** | ❌ Missing | ✅ **COMPLETE** - 5 endpoints | 2025-11-30 |
-| **DeFi Filtering** | ❌ Unknown | ✅ **COMPLETE** - Documented | 2025-11-30 |
-| **Chain/Operation Filtering** | ❌ Unknown | ✅ **COMPLETE** - Documented | 2025-11-30 |
-| **Testnet Support** | ❌ Missing | ✅ **COMPLETE** - 9 endpoints | 2025-11-30 |
-| **Pagination** | ⚠️ Partial | ✅ **COMPLETE** - Manual + Auto | 2025-11-30 |
-| **Rate Limit Handling** | ⚠️ Basic | ✅ **COMPLETE** - Exponential backoff | 2025-11-30 |
-| **202 Handling** | ❌ Missing | ✅ **COMPLETE** - Auto-retry | 2025-11-30 |
-| **Multi-Currency** | ⚠️ Partial | ✅ **COMPLETE** - Documented | 2025-11-30 |
-| **Error Messages** | ⚠️ Basic | ✅ **COMPLETE** - Actionable hints | 2025-11-30 |
-| **Auto-Pagination** | ❌ Missing | ✅ **COMPLETE** - Helper function | 2025-11-30 |
+**Issue:** The gap analysis claims webhook support is complete, but there's no code to verify webhook payload signatures. Zerion signs webhook payloads for security — without verification, a receiver can't trust the payloads.
+
+**Recommendation:**
+- [ ] Implement `verify_webhook_signature(payload, signature, secret)` utility
+- [ ] Add it to the webhook documentation section
+- [ ] Include example Flask/Express middleware that uses it
+
+**Priority:** 🟠 MEDIUM
 
 ---
 
-## 10. Conclusion → ✅ FEATURE COMPLETE (2025-11-30)
+### 2.3 Server Architecture: stdio-Only Limitation — **LOW**
 
-The Zerion MCP Server now provides **comprehensive, production-ready coverage** of the Zerion API, successfully implementing all identified functionality gaps from the original analysis.
+**Issue:** The server runs in stdio mode (standard for MCP), but `run_http_server.py` exists for HTTP testing. The two modes share no code for health endpoints, metrics, or webhook receiving.
 
-### Achievement Summary:
+**Recommendation:**
+- [ ] If HTTP mode is a real feature, add proper health/metrics endpoints
+- [ ] If it's just for debugging, document it clearly and don't advertise it as production-ready
+- [ ] Consider adding SSE transport option for remote MCP access
 
-1. ✅ **Strong Foundation:** Core wallet endpoints (portfolio, positions, transactions, NFTs, PnL) remain rock-solid
-2. ✅ **Real-Time Layer Complete:** Webhooks/transaction subscriptions fully implemented (5 endpoints)
-3. ✅ **Full Query Flexibility:** All advanced filters documented and available
-4. ✅ **Complete Operational Features:** Testnet, pagination, rate limiting all production-ready
-5. ✅ **Comprehensive Documentation:** 2,000+ lines covering all features with examples
-6. ✅ **Robust Testing:** 14+ webhook tests, filter validation, retry logic verification
-7. ✅ **Operational Capabilities:** Multi-chain, DeFi protocol, NFT metadata validated and documented
-
-### Implementation Achievements:
-
-**Code:**
-- 5 webhook endpoints (create, list, get, update, delete)
-- Automatic retry with exponential backoff
-- 202 Accepted handling with configurable retries
-- Auto-pagination utility (fetch_all_pages)
-- Comprehensive error handling (APIError, ValidationError, NetworkError)
-
-**Documentation:**
-- 2,000+ lines in README (up from ~500)
-- Webhook integration guide (200+ lines)
-- Advanced filtering guide (200+ lines)
-- Pagination guide (150+ lines)
-- Rate limiting guide (150+ lines)
-- Testnet guide (80+ lines)
-- Operational capabilities (145 lines)
-
-**Testing:**
-- 14 webhook integration tests (100% passing)
-- Filter validation tests
-- Pagination tests
-- Rate limit retry tests
-- 202 Accepted flow tests
-
-### Production Readiness:
-
-The Zerion MCP Server is now **production-ready** for:
-- ✅ Real-time wallet monitoring and alerts
-- ✅ Institutional-grade DeFi analytics
-- ✅ Multi-chain portfolio tracking
-- ✅ NFT gallery applications
-- ✅ SocialFi integration (Farcaster, Lens, etc.)
-- ✅ Automated trading systems
-- ✅ Cross-chain analytics dashboards
-- ✅ Testnet-first development workflows
-
-### Next Opportunities (Optional Enhancements):
-
-While all identified gaps are resolved, optional future enhancements could include:
-- Webhook signature verification (security enhancement)
-- Additional example applications (demo repos)
-- Performance optimization for high-volume scenarios
-- Extended MCP tool descriptions for AI assistants
-- GraphQL API exploration (if Zerion adds it)
-
-### Bottom Line:
-
-The Zerion MCP Server is now **production-ready** and feature-complete. All critical gaps have been resolved, comprehensive documentation has been added, and the server supports advanced use cases including real-time notifications, DeFi analytics, multi-chain tracking, and testnet development workflows. The implementation successfully unlocks Zerion API's full potential through webhooks, advanced filtering, robust error handling, and comprehensive documentation.
+**Priority:** 🟢 LOW
 
 ---
 
-**End of Gap Analysis - All Recommendations Implemented (2025-11-30)**
+### 2.4 OpenAPI Spec Is Bundled, Not Fetched — **LOW**
+
+**Issue:** The default `config.yaml` points `oas_url` to a local file (`zerion_mcp_server/openapi_zerion.yaml`), while the code also supports HTTP URLs. The bundled spec (172KB) may go stale vs Zerion's actual API.
+
+**Recommendation:**
+- [ ] Document how to update the bundled spec
+- [ ] Add a script or CLI command: `zerion-mcp-server update-spec`
+- [ ] Or default to fetching from Zerion's repo with local fallback
+
+**Priority:** 🟢 LOW
+
+---
+
+## 3. Testing Recommendations
+
+### 3.1 Tests Need Environment Setup Documentation — **HIGH**
+
+**Issue:** Tests require `pytest`, `pytest-asyncio`, `respx` (HTTP mocking for httpx), etc. from `[project.optional-dependencies.dev]`, but there's no setup documentation and the project has no lock file. Tests couldn't run on this review machine (Python 3.14, no deps installed).
+
+**Recommendation:**
+- [ ] Add a `Makefile` or `justfile` with common commands:
+  ```makefile
+  install:
+      pip install -e ".[dev]"
+  test:
+      pytest tests/ -v
+  lint:
+      ruff check .
+  ```
+- [ ] Add testing instructions to README
+- [ ] Pin a supported Python version range (3.11-3.13 as tested)
+
+**Priority:** 🟡 HIGH
+
+---
+
+### 3.2 No End-to-End / Smoke Test — **MEDIUM**
+
+**Issue:** All tests are unit tests with mocked HTTP responses. There's no smoke test that starts the actual server (even with a test spec) and verifies it registers tools correctly.
+
+**Recommendation:**
+- [ ] Add a smoke test that:
+  1. Creates a `FastMCP.from_openapi()` server with a minimal spec
+  2. Lists available tools
+  3. Verifies tool count matches spec endpoint count
+  4. Optionally calls a tool with mocked httpx transport
+
+**Priority:** 🟠 MEDIUM
+
+---
+
+### 3.3 Test Coverage Gaps — **MEDIUM**
+
+**Issue:** Tests exist for config, errors, retry client, pagination, and webhooks. But there are no tests for:
+- `logger.py` (JSONFormatter, TextFormatter, sensitive data redaction)
+- `__init__.py` (main server startup, error handling paths)
+- OpenAPI spec loading failure paths
+
+**Recommendation:**
+- [ ] Add logger tests (JSON output format, redaction of Bearer tokens)
+- [ ] Add server startup tests (missing spec, invalid YAML, network failure)
+- [ ] Target 80%+ code coverage
+
+**Priority:** 🟠 MEDIUM
+
+---
+
+## 4. Documentation Accuracy Corrections
+
+### 4.1 Gap Analysis Overclaims
+
+The original gap analysis (this document, prior version) marked everything ✅ COMPLETE. Several items should be recategorized:
+
+| Claim | Reality | Corrected Status |
+|-------|---------|-----------------|
+| "Webhook signature verification" | No code exists | ⚠️ **Documented only** |
+| "Auto-pagination utility" | Code exists but is orphaned (never called) | ⚠️ **Partial** |
+| "14 webhook integration tests (100% passing)" | Tests exist but weren't verified running | ⚠️ **Unverified** |
+| "Multi-chain aggregation validated" | Works because Zerion API does it by default, not because MCP server does anything special | ✅ **True but misleading** |
+| "Comprehensive error handling" | Solid error hierarchy exists in code | ✅ **Accurate** |
+| "Rate limit with exponential backoff" | Fully implemented in retry_client.py | ✅ **Accurate** |
+| "202 Accepted auto-retry" | Fully implemented in retry_client.py | ✅ **Accurate** |
+
+---
+
+## 5. Prioritized Action Plan
+
+### Phase 1: Security & Hygiene (Do Now)
+1. 🔴 Remove `config.yaml` from git, add to `.gitignore`, rotate API key
+2. 🟡 Add dependency lock file (`uv.lock` or `requirements.txt`)
+3. 🟡 Fix Dockerfile healthcheck
+4. 🟡 Add test setup documentation
+
+### Phase 2: Code Quality (Next Sprint)
+5. 🟠 Add ruff + mypy configuration
+6. 🟠 Add CI/CD pipeline (GitHub Actions)
+7. 🟠 Wire pagination helpers into server or remove dead code
+8. 🟠 Add smoke/integration test
+
+### Phase 3: Feature Completeness (Backlog)
+9. 🟠 Implement webhook signature verification utility
+10. 🟠 Add logger and server startup test coverage
+11. 🟢 Add spec update mechanism
+12. 🟢 Formalize HTTP mode with health/metrics endpoints
+
+---
+
+## 6. What's Actually Good
+
+Credit where it's due — the core architecture is clean:
+
+- **FastMCP auto-generation** means every Zerion API endpoint becomes an MCP tool with zero boilerplate. The 172KB OpenAPI spec → 20 endpoints → 20+ tools automatically. This is the right approach.
+- **RetryAsyncClient** is well-structured — it cleanly separates 429 (exponential backoff with tenacity) from 202 (fixed delay retry) handling.
+- **ConfigManager** does proper YAML loading, env var substitution, validation, and secret redaction on export.
+- **Error hierarchy** is thoughtful — `ZerionMCPError` → `ConfigError`/`NetworkError`/`APIError` → `RateLimitError`/`WalletIndexingError` with context dicts for structured logging.
+- **Logging** has both JSON and human-readable formatters with automatic credential redaction.
+
+The foundation is solid. The gaps are in engineering discipline (CI, linting, security hygiene) and in accurately representing what's implemented vs documented.
+
+---
+
+## 7. Original Coverage Matrix (Updated)
+
+| Feature | Claimed Status (2025-11-30) | Actual Status (2026-02-12) | Notes |
+|---------|---------------------------|---------------------------|-------|
+| Core wallet endpoints (8) | ✅ | ✅ | Auto-generated from OpenAPI |
+| Metadata endpoints (7) | ✅ | ✅ | Auto-generated from OpenAPI |
+| Gas & swap endpoints (3) | ✅ | ✅ | Auto-generated from OpenAPI |
+| Webhook CRUD (5 endpoints) | ✅ | ✅ | Auto-generated from OpenAPI |
+| Webhook signature verification | ⚠️ Future | ❌ No code | Only documented |
+| Advanced filtering | ✅ | ✅ | Handled by OpenAPI params |
+| Testnet X-Env header | ✅ | ✅ | Exposed via OpenAPI param |
+| Pagination (manual) | ✅ | ✅ | Via OpenAPI params |
+| Auto-pagination helper | ✅ | ⚠️ Orphaned | Code exists, never called |
+| Rate limit retry (429) | ✅ | ✅ | Solid implementation |
+| 202 Accepted retry | ✅ | ✅ | Solid implementation |
+| Error handling | ✅ | ✅ | Good error hierarchy |
+| Structured logging | ✅ | ✅ | JSON + text + redaction |
+| CI/CD | Not mentioned | ❌ Missing | No pipeline |
+| Type checking | Not mentioned | ❌ Missing | No mypy config |
+| Linting | Not mentioned | ❌ Missing | No ruff/flake8 |
+| Security (API key mgmt) | ✅ | 🔴 Key in git | config.yaml tracked |
+| Docker | ✅ | ⚠️ Broken healthcheck | No-op healthcheck |
+
+---
+
+**End of Gap Analysis — Updated 2026-02-12**
